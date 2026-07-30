@@ -1,0 +1,50 @@
+{
+  "package_key": "noventi.crm",
+  "version": "0.1.0",
+  "package_type": "business",
+  "surfaces": [
+    {
+      "surface_key": "crm.customer",
+      "title": "CRM Customers",
+      "description": "Proposed read-only discovery surface for tenant-scoped commercial customers."
+    },
+    {
+      "surface_key": "crm.contact",
+      "title": "CRM Contacts",
+      "description": "Proposed read-only discovery surface for privacy-governed contacts belonging to a customer."
+    }
+  ],
+  "actions": [
+    {
+      "action_key": "crm.customer.inspect",
+      "resource_type": "pkg.crm.customer",
+      "permission_action": "read",
+      "high_impact": false,
+      "surface_key": "crm.customer",
+      "description": "Contract draft only; declares no query implementation or business write path."
+    },
+    {
+      "action_key": "crm.contact.inspect",
+      "resource_type": "pkg.crm.contact",
+      "permission_action": "read",
+      "high_impact": false,
+      "surface_key": "crm.contact",
+      "description": "Contract draft only; declares no query implementation or business write path."
+    }
+  ],
+  "required_permissions": [
+    {
+      "resource_type": "pkg.crm.customer",
+      "actions": [
+        "read"
+      ]
+    },
+    {
+      "resource_type": "pkg.crm.contact",
+      "actions": [
+        "read"
+      ]
+    }
+  ],
+  "declared_events": []
+}

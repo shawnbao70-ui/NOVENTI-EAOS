@@ -1,0 +1,763 @@
+openapi: 3.1.0
+info:
+  title: NOVENTI EAOS AI Runtime API
+  version: 1.0.10
+  description: |
+    PHX-G266 closes AgentRun/MemoryEntry outer schemas (value remains free-form).
+    PHX-G191 tightens AI status body field parity.
+    PHX-G181 documents named AI status codes (400/403/404/409/503).
+    PHX-A12 AI Runtime HTTP contract. PHX-G164 documents status fence fields
+    (`ai_subject_required`, `commit_requires_approval`) and aligns KernelError
+    to the Gateway `detail` envelope (semantic deepen; T-0188 remainder).
+    tenant_id, subject_id, session_id and platform_scope are derived by the
+    trusted authentication boundary and are never accepted from request bodies.
+servers:
+  - url: /v1
+security:
+  - bearerAuth: []
+paths:
+  /ai/status:
+    get:
+      operationId: getAIRuntimeStatus
+      summary: Read-only Foundation status posture
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: AI Runtime Foundation status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FoundationStatusEnvelope"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /ai/runs:
+    post:
+      operationId: createAgentRun
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAgentRunRequest"
+      responses:
+        "201":
+          description: Agent run created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UuidResult"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid run payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "403":
+          description: AI runtime required or tool denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: AI service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /ai/runs/{runId}:
+    get:
+      operationId: getAgentRun
+      parameters:
+        - $ref: "#/components/parameters/RunId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Agent run
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentRun"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Agent run not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: AI service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /ai/tools:
+    post:
+      operationId: registerTool
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterToolRequest"
+      responses:
+        "201":
+          description: Tool registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UuidResult"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid tool payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "403":
+          description: Tool denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Tool conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: AI service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /ai/runs/{runId}/tools/invocations:
+    post:
+      operationId: invokeTool
+      parameters:
+        - $ref: "#/components/parameters/RunId"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InvokeToolRequest"
+      responses:
+        "200":
+          description: Tool invoked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ToolInvocationResult"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid invoke payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "403":
+          description: Tool denied or approval required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Tool not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: AI service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /ai/runs/{runId}/memory:
+    post:
+      operationId: writeMemory
+      parameters:
+        - $ref: "#/components/parameters/RunId"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WriteMemoryRequest"
+      responses:
+        "200":
+          description: Memory written
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UuidResult"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid memory payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "403":
+          description: Memory denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: AI service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /ai/runs/{runId}/memory/{key}:
+    get:
+      operationId: readMemory
+      parameters:
+        - $ref: "#/components/parameters/RunId"
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Memory entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemoryEntry"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "400":
+          description: Invalid memory query
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "403":
+          description: Memory denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: AI service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /ai/runs/{runId}/approvals:
+    post:
+      operationId: requestApproval
+      parameters:
+        - $ref: "#/components/parameters/RunId"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RequestApprovalRequest"
+      responses:
+        "201":
+          description: Workflow approval instance started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UuidResult"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid approval payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "403":
+          description: Approval required/denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Run not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: AI service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /ai/runs/{runId}/commits:
+    post:
+      operationId: commitAction
+      parameters:
+        - $ref: "#/components/parameters/RunId"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommitActionRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid commit payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "403":
+          description: Commit forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Run not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: AI service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    CorrelationId:
+      name: X-Correlation-Id
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    RunId:
+      name: runId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    FoundationStatusEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/FoundationStatusData"
+    FoundationStatusData:
+      type: object
+      additionalProperties: false
+      description: PHX-G117/G191 AI Runtime status fences.
+      required:
+        - writable
+        - ai_subject_required
+        - commit_requires_approval
+        - supported_surfaces
+      properties:
+        writable:
+          type: boolean
+          const: false
+        ai_subject_required:
+          type: boolean
+          const: true
+          description: AI Runtime requires an AI subject; humans cannot commit as AI.
+        commit_requires_approval:
+          type: boolean
+          const: true
+          description: High-impact commit stays approval-gated (fail-closed without approval).
+        supported_surfaces:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          minItems: 1
+    CreateAgentRunRequest:
+      type: object
+      required: [goal]
+      additionalProperties: false
+      properties:
+        goal:
+          type: string
+          minLength: 1
+        plan_summary:
+          type: string
+    RegisterToolRequest:
+      type: object
+      required: [name, description]
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        high_impact:
+          type: boolean
+          default: false
+    InvokeToolRequest:
+      type: object
+      required: [tool_name]
+      additionalProperties: false
+      properties:
+        tool_name:
+          type: string
+          minLength: 1
+        arguments:
+          type: object
+          additionalProperties: true
+        plan_version:
+          type: string
+        scope:
+          type: string
+    WriteMemoryRequest:
+      type: object
+      required: [key, value]
+      additionalProperties: false
+      properties:
+        key:
+          type: string
+          minLength: 1
+        value:
+          type: object
+          additionalProperties: true
+    RequestApprovalRequest:
+      type: object
+      required: [definition_id, approval_subject_id, action, resource_ref]
+      additionalProperties: false
+      properties:
+        definition_id:
+          type: string
+          format: uuid
+        approval_subject_id:
+          type: string
+          format: uuid
+        action:
+          type: string
+          minLength: 1
+        resource_ref:
+          type: string
+          minLength: 1
+        plan_version:
+          type: string
+        scope:
+          type: string
+    CommitActionRequest:
+      type: object
+      required: [action, resource_ref]
+      additionalProperties: false
+      properties:
+        action:
+          type: string
+          minLength: 1
+        resource_ref:
+          type: string
+          minLength: 1
+        plan_version:
+          type: string
+        scope:
+          type: string
+    AgentRunStatus:
+      type: string
+      enum:
+        - planned
+        - running
+        - pending_approval
+        - completed
+        - failed
+        - cancelled
+    AgentRun:
+      type: object
+      additionalProperties: false
+      required: [id, goal, status, version, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        goal:
+          type: string
+        plan_summary:
+          type: string
+        status:
+          $ref: "#/components/schemas/AgentRunStatus"
+        approval_ref:
+          type: [string, "null"]
+        version:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    MemoryEntry:
+      type: object
+      additionalProperties: false
+      required: [id, key, value, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        key:
+          type: string
+        value:
+          type: object
+          additionalProperties: true
+        version:
+          type: integer
+    ToolInvocationPayload:
+      type: object
+      additionalProperties: false
+      required: [tool_name, high_impact, output]
+      description: >
+        Named payload for ToolInvocationResult.data (PHX-G232). Mirrors
+        serialize_tool_invocation live keys.
+      properties:
+        tool_name:
+          type: string
+        high_impact:
+          type: boolean
+        output:
+          type: object
+          additionalProperties: true
+    ToolInvocationResult:
+      type: object
+      additionalProperties: false
+      required: [ok, data]
+      properties:
+        ok:
+          type: boolean
+          const: true
+        data:
+          $ref: "#/components/schemas/ToolInvocationPayload"
+        audit_id:
+          type: string
+          format: uuid
+    UuidResult:
+      type: object
+      additionalProperties: false
+      required: [ok, id, data]
+      description: >
+        Unified UuidResult dialect (PHX-G170) with ok envelope for AI/Event.
+        `id` and `data` carry the same UUID.
+      properties:
+        ok:
+          type: boolean
+          const: true
+        id:
+          type: string
+          format: uuid
+        data:
+          type: string
+          format: uuid
+        audit_id:
+          type: string
+          format: uuid
+    OkResponse:
+      type: object
+      additionalProperties: false
+      required: [ok]
+      properties:
+        ok:
+          type: boolean
+          const: true
+        data:
+          type: boolean
+          const: true
+        audit_id:
+          type: string
+          format: uuid
+    ContextElevationDenialDetails:
+      type: object
+      additionalProperties: false
+      description: >
+        Known details shape for code TERMINAL_CONTEXT_ELEVATION_DENIED
+        (live /context/echo elevation deny). PHX-G208/G220 per-code honesty;
+        other error codes may use different details keys.
+      required: [fields]
+      properties:
+        fields:
+          type: array
+          items:
+            type: string
+          description: Sorted denied elevation field names.
+    ErrorBody:
+      type: object
+      additionalProperties: false
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          description: >
+            Optional structured denial context (G202/G204/G216/G220). Known
+            elevation shape is composed via anyOf $ref to
+            ContextElevationDenialDetails; residual object allows other keys.
+          anyOf:
+            - $ref: "#/components/schemas/ContextElevationDenialDetails"
+            - type: object
+              additionalProperties: true
+    ValidationErrorItem:
+      type: object
+      description: FastAPI/Pydantic request validation error item.
+      required: [loc, msg, type]
+      additionalProperties: true
+      properties:
+        loc:
+          type: array
+          items:
+            oneOf:
+              - type: string
+              - type: integer
+        msg:
+          type: string
+        type:
+          type: string
+    HTTPValidationError:
+      type: object
+      description: FastAPI request validation envelope (422 detail list).
+      additionalProperties: false
+      required: [detail]
+      properties:
+        detail:
+          type: array
+          items:
+            $ref: "#/components/schemas/ValidationErrorItem"
+    GatewayDetailError:
+      type: object
+      additionalProperties: false
+      required: [detail]
+      properties:
+        detail:
+          $ref: "#/components/schemas/ErrorBody"
+  responses:
+    Ok:
+      description: Operation succeeded
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/OkResponse"
+    KernelError:
+      description: FastAPI HTTPException detail envelope (PHX-G164)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/GatewayDetailError"

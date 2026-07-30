@@ -1,0 +1,33 @@
+# docs/architecture/
+
+架构文档工作区。
+
+## 核心文档
+
+| 文档 | 说明 |
+|------|------|
+| [VISION.md](VISION.md) | 愿景 |
+| [EAOS_ARCHITECTURE.md](EAOS_ARCHITECTURE.md) | 架构总览 |
+| [SYSTEM_PRINCIPLES.md](SYSTEM_PRINCIPLES.md) | 系统原则 |
+| [KERNEL_INTERFACES.md](KERNEL_INTERFACES.md) | Kernel 接口大纲 |
+| [EXECUTION_CONTEXT.md](EXECUTION_CONTEXT.md) | 执行上下文契约 |
+| [ERROR_CODES.md](ERROR_CODES.md) | 错误码总表 |
+| [IDENTITY_INTERFACE.md](IDENTITY_INTERFACE.md) | Identity 接口 |
+| [ORGANIZATION_INTERFACE.md](ORGANIZATION_INTERFACE.md) | Organization 接口 |
+| [PERMISSION_INTERFACE.md](PERMISSION_INTERFACE.md) | Permission 接口 |
+| [PERMISSION_STATE_MACHINES.md](PERMISSION_STATE_MACHINES.md) | Permission 状态机 |
+| [PERMISSION_EVENTS.md](PERMISSION_EVENTS.md) | Permission 领域事件目录 |
+| [WORKFLOW_INTERFACE.md](WORKFLOW_INTERFACE.md) | Workflow 接口 |
+| [WORKFLOW_STATE_MACHINES.md](WORKFLOW_STATE_MACHINES.md) | Workflow 状态机 |
+| [WORKFLOW_EVENTS.md](WORKFLOW_EVENTS.md) | Workflow 领域事件目录 |
+| [EVENT_INTERFACE.md](EVENT_INTERFACE.md) | Event Bus 接口 |
+| [ORGANIZATION_STATE_MACHINES.md](ORGANIZATION_STATE_MACHINES.md) | Organization 状态机 |
+| [ORGANIZATION_EVENTS.md](ORGANIZATION_EVENTS.md) | Organization 领域事件目录 |
+| [KERNEL_DATA_MODEL.md](KERNEL_DATA_MODEL.md) | 数据模型草案 |
+| [KERNEL_CONTRACT_TEST_PLAN.md](KERNEL_CONTRACT_TEST_PLAN.md) | 契约测试计划 |
+| [RUNTIME_INTERFACE.md](RUNTIME_INTERFACE.md) | Runtime Foundation 接口 |
+| [RUNTIME_CONTRACT_TEST_PLAN.md](RUNTIME_CONTRACT_TEST_PLAN.md) | Runtime 契约测试计划 |
+
+## 状态
+
+PHX-004～PHX-006、PHX-A03、PHX-K07～K09 已完成；当前进入 PHX-K10 Knowledge 架构门禁。

@@ -1,0 +1,928 @@
+openapi: 3.1.0
+info:
+  title: NOVENTI EAOS Knowledge API
+  version: 1.0.11
+  description: |
+    PHX-G377 deepens GET /knowledge/status with governance honesty flags
+    (graph_write_engine=false, constitution_rewrite=never,
+    sample_pack_is_not_runtime_graph=true, execution_authority=none).
+    PHX-G270 closes KnowledgeEntity/ProvenanceRecord outer schemas (attributes/details remain free-form).
+    PHX-G192 tightens status body field parity (knowledge).
+    PHX-K10 Knowledge Shared Platform Capability HTTP contract.
+    PHX-G164 aligns UuidResult (`{id}`) and Gateway `detail` error envelope
+    with live FastAPI responses (semantic deepen; T-0188 remainder).
+    tenant_id, subject_id, session_id and platform_scope are derived by the
+    trusted authentication boundary and are never accepted from request bodies.
+    PHX-G180 documents named Knowledge status codes (400/403/404/409/503).
+servers:
+  - url: /v1
+security:
+  - bearerAuth: []
+paths:
+  /knowledge/status:
+    get:
+      operationId: getKnowledgeStatus
+      summary: Read-only Foundation status posture
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Knowledge Foundation status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgeStatusEnvelope"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /knowledge/entities:
+    post:
+      operationId: upsertEntity
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertEntityRequest"
+      responses:
+        "200":
+          description: Knowledge entity created or updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UuidResult"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid entity payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "403":
+          description: Cross-tenant or secret forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Entity or version conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Knowledge service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+    get:
+      operationId: queryEntities
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+        - name: entityType
+          in: query
+          schema:
+            type: string
+        - name: layer
+          in: query
+          schema:
+            $ref: "#/components/schemas/KnowledgeLayer"
+        - name: includeArchived
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: Authorized knowledge entities
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgeEntityListEnvelope"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "400":
+          description: Invalid query
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "403":
+          description: AI knowledge denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Knowledge service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /knowledge/entities/{entityId}:
+    get:
+      operationId: getEntity
+      parameters:
+        - $ref: "#/components/parameters/EntityId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Knowledge entity
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgeEntity"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Entity not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Archived or retention expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Knowledge service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /knowledge/entities/{entityId}/archive:
+    post:
+      operationId: archiveEntity
+      parameters:
+        - $ref: "#/components/parameters/EntityId"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VersionedProvenanceRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid archive payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Entity not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Version conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Knowledge service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /knowledge/entities/{entityId}/share:
+    post:
+      operationId: shareEntity
+      parameters:
+        - $ref: "#/components/parameters/EntityId"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ShareEntityRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid share payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "403":
+          description: Cross-tenant forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Entity not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Knowledge service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /knowledge/links:
+    post:
+      operationId: createLink
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLinkRequest"
+      responses:
+        "201":
+          description: Knowledge link created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UuidResult"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid link payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Entity not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Invalid link or conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Knowledge service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /knowledge/search:
+    get:
+      operationId: searchKnowledge
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+        - name: text
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          description: Keyword search hits
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgeSearchEnvelope"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "400":
+          description: Invalid search payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "403":
+          description: AI knowledge denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Knowledge service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /knowledge/provenance/{subjectKind}/{subjectId}:
+    get:
+      operationId: getProvenance
+      parameters:
+        - name: subjectKind
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [entity, link]
+        - name: subjectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Append-only provenance records
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgeProvenanceListEnvelope"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "400":
+          description: Provenance required or invalid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Entity not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Knowledge service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    CorrelationId:
+      name: X-Correlation-Id
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    EntityId:
+      name: entityId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    FoundationStatusEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/FoundationStatusData"
+    FoundationStatusData:
+      type: object
+      additionalProperties: false
+      description: PHX-G192 Foundation status body field parity (legacy shared shape).
+      required: [writable, supported_surfaces]
+      properties:
+        writable:
+          type: boolean
+          const: false
+        supported_surfaces:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          minItems: 1
+    KnowledgeStatusEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/KnowledgeStatusData"
+    KnowledgeStatusData:
+      type: object
+      additionalProperties: false
+      description: >
+        Knowledge Foundation status with G293 sample-pack discoverability nest
+        and PHX-G377 governance honesty. No graph write engine is invented;
+        sample pack is not a runtime graph; constitution_rewrite never;
+        execution_authority none on this status surface.
+      required:
+        - writable
+        - supported_surfaces
+        - sample_knowledge_pack_product
+        - graph_write_engine
+        - constitution_rewrite
+        - sample_pack_is_not_runtime_graph
+        - sample_pack_not_complete_evidence
+        - execution_authority
+      properties:
+        writable:
+          type: boolean
+          const: false
+        supported_surfaces:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          minItems: 1
+        sample_knowledge_pack_product:
+          $ref: "#/components/schemas/SampleKnowledgePackProductPosture"
+        graph_write_engine:
+          type: boolean
+          const: false
+        constitution_rewrite:
+          type: string
+          const: never
+        sample_pack_is_not_runtime_graph:
+          type: boolean
+          const: true
+        sample_pack_not_complete_evidence:
+          type: boolean
+          const: true
+        execution_authority:
+          type: string
+          const: none
+    SampleKnowledgePackProductPosture:
+      type: object
+      additionalProperties: false
+      required:
+        - surface
+        - milestone
+        - pack_path
+        - assembles
+        - crud
+        - brain_execute
+        - twin_authorize
+        - usage
+        - discovery_routes
+        - fail_closed_reasons
+      properties:
+        surface:
+          type: string
+          const: foundation_sample_knowledge_pack
+        milestone:
+          type: string
+          const: PHX-G293
+        pack_path:
+          type: string
+          minLength: 1
+        assembles:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            minLength: 1
+        crud:
+          type: boolean
+          const: false
+        brain_execute:
+          type: string
+          const: fail_closed
+        twin_authorize:
+          type: string
+          const: fail_closed
+        usage:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            minLength: 1
+        discovery_routes:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            minLength: 1
+        fail_closed_reasons:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            minLength: 1
+    KnowledgeLayer:
+      type: string
+      enum: [canonical, operational, documentary, derived]
+    KnowledgeStatus:
+      type: string
+      enum: [active, archived]
+    UpsertEntityRequest:
+      type: object
+      required: [entity_type, name, layer, source_ref, reason]
+      additionalProperties: false
+      properties:
+        entity_id:
+          type: string
+          format: uuid
+        entity_type:
+          type: string
+          minLength: 1
+        name:
+          type: string
+          minLength: 1
+        layer:
+          $ref: "#/components/schemas/KnowledgeLayer"
+        attributes:
+          type: object
+          additionalProperties: true
+        labels:
+          type: array
+          items:
+            type: string
+        retain_until:
+          type: string
+          format: date-time
+        source_ref:
+          type: string
+          minLength: 1
+        reason:
+          type: string
+          minLength: 1
+        expected_version:
+          type: integer
+          minimum: 1
+    CreateLinkRequest:
+      type: object
+      required: [from_entity_id, to_entity_id, relation_type, source_ref, reason]
+      additionalProperties: false
+      properties:
+        from_entity_id:
+          type: string
+          format: uuid
+        to_entity_id:
+          type: string
+          format: uuid
+        relation_type:
+          type: string
+          minLength: 1
+        attributes:
+          type: object
+          additionalProperties: true
+        source_ref:
+          type: string
+          minLength: 1
+        reason:
+          type: string
+          minLength: 1
+    VersionedProvenanceRequest:
+      type: object
+      required: [source_ref, reason]
+      additionalProperties: false
+      properties:
+        source_ref:
+          type: string
+          minLength: 1
+        reason:
+          type: string
+          minLength: 1
+        expected_version:
+          type: integer
+          minimum: 1
+    ShareEntityRequest:
+      type: object
+      required: [share_with_subject_id, source_ref, reason]
+      additionalProperties: false
+      properties:
+        share_with_subject_id:
+          type: string
+          format: uuid
+        source_ref:
+          type: string
+          minLength: 1
+        reason:
+          type: string
+          minLength: 1
+        expected_version:
+          type: integer
+          minimum: 1
+    KnowledgeEntityListEnvelope:
+      type: object
+      additionalProperties: false
+      required: [ok, data]
+      description: >
+        Named list envelope for GET /knowledge/entities (PHX-G224).
+      properties:
+        ok:
+          type: boolean
+          const: true
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/KnowledgeEntity"
+    KnowledgeSearchEnvelope:
+      type: object
+      additionalProperties: false
+      required: [ok, data]
+      description: >
+        Named list envelope for GET /knowledge/search (PHX-G224).
+      properties:
+        ok:
+          type: boolean
+          const: true
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/KnowledgeEntity"
+    KnowledgeProvenanceListEnvelope:
+      type: object
+      additionalProperties: false
+      required: [ok, data]
+      description: >
+        Named list envelope for GET /knowledge/provenance/{subjectKind}/{subjectId}
+        (PHX-G224).
+      properties:
+        ok:
+          type: boolean
+          const: true
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProvenanceRecord"
+    KnowledgeEntity:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - entity_type
+        - name
+        - layer
+        - status
+        - attributes
+        - labels
+        - shared_with_subject_ids
+        - version
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        entity_type:
+          type: string
+        name:
+          type: string
+        layer:
+          $ref: "#/components/schemas/KnowledgeLayer"
+        status:
+          $ref: "#/components/schemas/KnowledgeStatus"
+        attributes:
+          type: object
+          additionalProperties: true
+        labels:
+          type: array
+          items:
+            type: string
+        shared_with_subject_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        retain_until:
+          type: [string, "null"]
+          format: date-time
+        version:
+          type: integer
+          minimum: 1
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    ProvenanceRecord:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - subject_kind
+        - subject_id
+        - actor_subject_id
+        - source_ref
+        - reason
+        - derived
+        - recorded_at
+        - details
+      properties:
+        id:
+          type: string
+          format: uuid
+        subject_kind:
+          type: string
+          enum: [entity, link]
+        subject_id:
+          type: string
+          format: uuid
+        actor_subject_id:
+          type: string
+          format: uuid
+        source_ref:
+          type: string
+        reason:
+          type: string
+        derived:
+          type: boolean
+        recorded_at:
+          type: string
+          format: date-time
+        details:
+          description: >
+            Optional structured denial context (G202/G204/G216/G220). Known
+            elevation shape is composed via anyOf $ref to
+            ContextElevationDenialDetails; residual object allows other keys.
+          anyOf:
+            - $ref: "#/components/schemas/ContextElevationDenialDetails"
+            - type: object
+              additionalProperties: true
+    UuidResult:
+      type: object
+      additionalProperties: false
+      required: [id, data]
+      description: >
+        Unified UuidResult dialect (PHX-G170): `id` and `data` carry the same
+        UUID for backward-compatible clients of either pre-unification shape.
+      properties:
+        id:
+          type: string
+          format: uuid
+        data:
+          type: string
+          format: uuid
+        audit_id:
+          type: string
+          format: uuid
+    OkResponse:
+      type: object
+      additionalProperties: false
+      required: [ok]
+      properties:
+        ok:
+          type: boolean
+          const: true
+        audit_id:
+          type: string
+          format: uuid
+    ContextElevationDenialDetails:
+      type: object
+      additionalProperties: false
+      description: >
+        Known details shape for code TERMINAL_CONTEXT_ELEVATION_DENIED
+        (live /context/echo elevation deny). PHX-G208/G220 per-code honesty;
+        other error codes may use different details keys.
+      required: [fields]
+      properties:
+        fields:
+          type: array
+          items:
+            type: string
+          description: Sorted denied elevation field names.
+    ErrorBody:
+      type: object
+      additionalProperties: false
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          description: >
+            Optional structured denial context (G202/G204/G216/G220). Known
+            elevation shape is composed via anyOf $ref to
+            ContextElevationDenialDetails; residual object allows other keys.
+          anyOf:
+            - $ref: "#/components/schemas/ContextElevationDenialDetails"
+            - type: object
+              additionalProperties: true
+    ValidationErrorItem:
+      type: object
+      description: FastAPI/Pydantic request validation error item.
+      required: [loc, msg, type]
+      additionalProperties: true
+      properties:
+        loc:
+          type: array
+          items:
+            oneOf:
+              - type: string
+              - type: integer
+        msg:
+          type: string
+        type:
+          type: string
+    HTTPValidationError:
+      type: object
+      description: FastAPI request validation envelope (422 detail list).
+      additionalProperties: false
+      required: [detail]
+      properties:
+        detail:
+          type: array
+          items:
+            $ref: "#/components/schemas/ValidationErrorItem"
+    GatewayDetailError:
+      type: object
+      additionalProperties: false
+      required: [detail]
+      properties:
+        detail:
+          $ref: "#/components/schemas/ErrorBody"
+  responses:
+    Ok:
+      description: Operation succeeded
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/OkResponse"
+    KernelError:
+      description: FastAPI HTTPException detail envelope (PHX-G164)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/GatewayDetailError"

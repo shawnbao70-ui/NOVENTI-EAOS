@@ -1,0 +1,144 @@
+# PHX-G51 / ADR-0070 — replace secrets before install; never commit real values.
+
+replicaCount: 1
+
+image:
+  repository: noventi/eaos-gateway
+  tag: "0.2.5"
+  pullPolicy: IfNotPresent
+
+gateway:
+  port: 8000
+  requireJwt: "1"
+  allowDevContextHeaders: "0"
+  envProfile: production
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  # Writable alembic/tmp needs may keep this false until tmpfs volumes are added.
+  readOnlyRootFilesystem: false
+  automountServiceAccountToken: false
+  jwtIssuer: https://eaos.local/issuer
+  jwtAudience: eaos-api
+  # When postgres.enabled=false, set full URL (postgresql+psycopg://...)
+  databaseUrl: ""
+
+secrets:
+  # REQUIRED — install fails closed if empty (documented; chart renders placeholders)
+  jwtSecret: "CHANGE_ME_JWT_SECRET"
+  postgresPassword: "CHANGE_ME_DB_PASSWORD"
+
+postgres:
+  enabled: true
+  image: postgres:16-alpine
+  user: eaos
+  database: eaos
+  port: 5432
+  persistence:
+    enabled: true
+    size: 8Gi
+    storageClass: ""
+
+service:
+  type: ClusterIP
+  port: 8000
+
+# PHX-G52 / ADR-0071 — opt-in; requires cluster Ingress Controller
+ingress:
+  enabled: false
+  className: nginx
+  annotations: {}
+  hosts:
+    - host: eaos.example.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  # Example TLS (manual secret):
+  # tls:
+  #   - secretName: eaos-tls
+  #     hosts:
+  #       - eaos.example.local
+  certManager:
+    enabled: false
+    clusterIssuer: letsencrypt-prod
+
+# PHX-G53 / ADR-0072 — opt-in; requires metrics-server (or equivalent)
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 70
+  # Optional memory target (null/omit when unused):
+  targetMemoryUtilizationPercentage: null
+
+# PHX-G54 / ADR-0073 — opt-in; mutually exclusive with autoscaling (HPA)
+# Requires Vertical Pod Autoscaler components in the cluster (not bundled).
+vpa:
+  enabled: false
+  # Off | Initial | Auto — Foundation default Off (recommend only)
+  updateMode: "Off"
+  controlledResources:
+    - cpu
+    - memory
+  minAllowed: {}
+  maxAllowed: {}
+
+# PHX-G58 / ADR-0077 — opt-in; mutually exclusive with HPA and VPA
+# Requires KEDA operator + CRDs in the cluster (not bundled).
+keda:
+  enabled: false
+  minReplicaCount: 1
+  maxReplicaCount: 3
+  cooldownPeriod: 300
+  cpu:
+    targetUtilizationPercentage: 70
+  memory:
+    # Optional memory trigger (null/omit when unused):
+    targetUtilizationPercentage: null
+
+# PHX-G59 / ADR-0078 — opt-in; vendor-agnostic sidecar inject labels/annotations
+# Requires a cluster Service Mesh control plane (not bundled).
+mesh:
+  enabled: false
+  # Override for Linkerd etc. (e.g. linkerd.io/inject=enabled)
+  injectLabelKey: sidecar.istio.io/inject
+  injectLabelValue: "true"
+  podLabels: {}
+  podAnnotations: {}
+  serviceAnnotations: {}
+  # PHX-G71 / ADR-0090 — opt-in Istio PeerAuthentication (requires mesh.enabled)
+  policy:
+    enabled: false
+    vendor: istio
+    mtlsMode: STRICT
+  # PHX-G72 / ADR-0091 — opt-in Istio VirtualService + DestinationRule
+  traffic:
+    enabled: false
+    vendor: istio
+    # Default: Gateway Service short name in release namespace
+    host: null
+    tlsMode: ISTIO_MUTUAL
+  # PHX-G73 / ADR-0092 — opt-in Istio AuthorizationPolicy (authenticated mesh principals)
+  authz:
+    enabled: false
+    vendor: istio
+    action: ALLOW
+    paths:
+      - "*"
+
+
+# PHX-G76 / ADR-0095 — optional deploy-region identity (not multi-region SaaS)
+region:
+  # Empty = unlabeled single-host (valid default)
+  id: ""
+  # When id set, add pod label eaos.noventi.io/deploy-region=<id>
+  labelPods: true
+
+resources: {}
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

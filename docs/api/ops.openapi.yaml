@@ -1,0 +1,512 @@
+openapi: 3.1.0
+info:
+  title: NOVENTI EAOS Gateway Ops API
+  version: 1.0.69
+  description: |
+    PHX-G139 Foundation gateway meta/ops contract. Documents the G18 operator
+    surfaces: health, release inventory posture, OpenAPI adapter catalog,
+    derived ExecutionContext read, and context echo (body elevation probe).
+    PHX-G148 adds read-only OpenAPI inventory product posture on
+    GET /adapters meta. PHX-G164/G166/G170/G174/G176–G181/G185–G204 deepen inventory honesty:
+    `route_mount_parity_complete=true` while `full_openapi_http_complete=false`
+    (`t0188_status=mount_parity_complete_outer_close_regression_guard_honest`;
+    UuidResult dual-key closed; auth/platform/marketplace detail aligned;
+    named status codes through G181; product-posture/status body parity G185–G192;
+    Package/Terminal/Event status mount parity G193;
+    RoleCatalogStatus source_counts field parity G195; RoleGrant auto-write response/detail parity G196; Ops GatewayDetailError KernelError parity G197; Terminal extension list response parity G198; Terminal extension invoke response parity G199; success-response catalog closed G200; ErrorBody/ErrorResponse details inventory G202;
+    fence `full_openapi_semantic_parity_t0188` remains). These routes are not
+    domain Kernel APIs. tenant_id / platform_scope / roles / subject_id must
+    never be accepted from request bodies.
+servers:
+  - url: /v1
+security: []
+paths:
+  /health:
+    get:
+      operationId: getGatewayHealth
+      summary: Liveness / readiness style health probe
+      tags: [Ops]
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Gateway is up
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthEnvelope"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /release:
+    get:
+      operationId: getGatewayRelease
+      summary: Read-only release manifest posture
+      tags: [Ops]
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Desensitized release inventory fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReleaseEnvelope"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /adapters:
+    get:
+      operationId: listGatewayAdapters
+      summary: List registered OpenAPI adapter descriptors
+      description: >
+        Returns OpenAPI adapter descriptors plus meta.count,
+        meta.openapi_inventory_product (PHX-G148 read-only inventory posture),
+        and meta.sample_knowledge_pack_product (PHX-G293 docs-only pack
+        discoverability). Inventory/pack postures do not implement CRUD routes.
+      tags: [Ops]
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Adapter catalog with inventory product meta
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdaptersEnvelope"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /context:
+    get:
+      operationId: getDerivedExecutionContext
+      summary: Read derived ExecutionContext (trusted boundary)
+      tags: [Ops]
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Derived context view
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContextEnvelope"
+        "401":
+          description: Missing trusted auth
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /context/echo:
+    post:
+      operationId: echoContextRejectingElevation
+      summary: Echo body while rejecting context elevation fields
+      description: >
+        Rejects tenant_id, subject_id, platform_scope, session_id, and roles
+        in the request body. Used as an operator probe for the trusted
+        authentication boundary.
+      tags: [Ops]
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContextEchoRequest"
+      responses:
+        "200":
+          description: Echo with derived context
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContextEchoEnvelope"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Body attempted context elevation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "401":
+          description: Missing trusted auth
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+components:
+  parameters:
+    CorrelationId:
+      name: X-Correlation-Id
+      in: header
+      required: false
+      schema:
+        type: string
+        minLength: 1
+  schemas:
+    HealthPayload:
+      type: object
+      additionalProperties: false
+      required: [status, service, gateway_store]
+      description: Named payload for HealthEnvelope.data (PHX-G232 + store honesty).
+      properties:
+        status:
+          type: string
+          const: ok
+        service:
+          type: string
+          minLength: 1
+        gateway_store:
+          type: string
+          enum: [memory, sql]
+          description: In-process gateway persistence mode (memory or SQL).
+    HealthEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/HealthPayload"
+    ReleasePosture:
+      type: object
+      additionalProperties: false
+      required: [baseline_name, version, alembic_head, sdk_version]
+      description: Named payload for ReleaseEnvelope.data (PHX-G228).
+      properties:
+        baseline_name:
+          type: string
+        version:
+          type: string
+        alembic_head:
+          type: string
+        sdk_version:
+          type: string
+        deploy_region:
+          type: [string, "null"]
+    ReleaseEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/ReleasePosture"
+    AdapterItem:
+      type: object
+      additionalProperties: false
+      required: [name, openapi_path, transport, status]
+      properties:
+        name:
+          type: string
+        openapi_path:
+          type: string
+        transport:
+          type: string
+        status:
+          type: string
+    OpenApiInventoryProductPosture:
+      type: object
+      additionalProperties: false
+      required:
+        - surface
+        - milestone
+        - openapi_contract_count
+        - adapter_count
+        - adapter_registry_status
+        - adapter_registry_aligned
+        - thin_probe_domains
+        - deferred_domains
+        - route_mount_parity_complete
+        - known_defer_fences
+        - full_openapi_http_complete
+        - semantic_remainder_honest
+        - t0188_status
+        - fail_closed_reasons
+      properties:
+        surface:
+          type: string
+          const: foundation_openapi_inventory_product
+        milestone:
+          type: string
+          const: PHX-G288
+        openapi_contract_count:
+          type: integer
+          minimum: 0
+        adapter_count:
+          type: integer
+          minimum: 0
+        adapter_registry_status:
+          type: string
+          enum: [aligned, drift]
+        adapter_registry_aligned:
+          type: boolean
+        thin_probe_domains:
+          type: array
+          items:
+            type: string
+        deferred_domains:
+          type: array
+          items:
+            type: string
+        route_mount_parity_complete:
+          type: boolean
+          const: true
+          description: >
+            Every catalog OpenAPI operation has a mounted /v1 FastAPI route
+            (path params normalized). Does not imply semantic schema parity.
+        known_defer_fences:
+          type: array
+          items:
+            type: string
+        full_openapi_http_complete:
+          type: boolean
+          const: false
+          description: >
+            Semantic completeness across response/error/status-code shapes.
+            Remains false after PHX-G288 outer-close regression guard (semantic remainder).
+        semantic_remainder_honest:
+          type: boolean
+          const: true
+          description: >
+            Batch-I honesty flag: mount parity may be complete while full
+            semantic HTTP completeness remains false.
+        t0188_status:
+          type: string
+          const: mount_parity_complete_outer_close_regression_guard_honest
+        fail_closed_reasons:
+          type: array
+          items:
+            type: string
+    AdaptersMeta:
+      type: object
+      additionalProperties: false
+      required: [count, openapi_inventory_product, sample_knowledge_pack_product]
+      description: Named meta for AdaptersEnvelope (PHX-G232 + G293 pack discoverability).
+      properties:
+        count:
+          type: integer
+          minimum: 0
+        openapi_inventory_product:
+          $ref: "#/components/schemas/OpenApiInventoryProductPosture"
+        sample_knowledge_pack_product:
+          $ref: "#/components/schemas/SampleKnowledgePackProductPosture"
+    SampleKnowledgePackProductPosture:
+      type: object
+      additionalProperties: false
+      description: >
+        PHX-G293 Sample knowledge pack discoverability (docs-only assembly).
+        Not a business module; CRUD remains closed.
+      required:
+        - surface
+        - milestone
+        - pack_path
+        - assembles
+        - crud
+        - brain_execute
+        - twin_authorize
+        - usage
+        - discovery_routes
+        - fail_closed_reasons
+      properties:
+        surface:
+          type: string
+          const: foundation_sample_knowledge_pack
+        milestone:
+          type: string
+          const: PHX-G293
+        pack_path:
+          type: string
+          minLength: 1
+        assembles:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            minLength: 1
+        crud:
+          type: boolean
+          const: false
+        brain_execute:
+          type: string
+          const: fail_closed
+        twin_authorize:
+          type: string
+          const: fail_closed
+        usage:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            minLength: 1
+        discovery_routes:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            minLength: 1
+        fail_closed_reasons:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            minLength: 1
+    AdaptersEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdapterItem"
+        meta:
+          $ref: "#/components/schemas/AdaptersMeta"
+    ExecutionContextView:
+      type: object
+      additionalProperties: false
+      required:
+        - subject_id
+        - subject_type
+        - tenant_id
+        - platform_scope
+        - correlation_id
+        - roles
+      properties:
+        subject_id:
+          type: string
+          format: uuid
+        subject_type:
+          type: string
+        tenant_id:
+          type: [string, "null"]
+          format: uuid
+        platform_scope:
+          type: boolean
+        correlation_id:
+          type: string
+        roles:
+          type: array
+          items:
+            type: string
+    ContextEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/ExecutionContextView"
+    ContextEchoRequest:
+      type: object
+      additionalProperties: true
+      description: >
+        Intentional free-form echo request body (PHX-G288). Elevation fields
+        (tenant_id, subject_id, platform_scope, session_id, roles) are rejected
+        at runtime; residual keys are echoed. ≠ invent domain semantics.
+    ContextEchoPayload:
+      type: object
+      additionalProperties: false
+      required: [context, echo]
+      description: Named payload for ContextEchoEnvelope.data (PHX-G232).
+      properties:
+        context:
+          $ref: "#/components/schemas/ExecutionContextView"
+        echo:
+          type: object
+          additionalProperties: true
+    ContextEchoEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/ContextEchoPayload"
+    ContextElevationDenialDetails:
+      type: object
+      additionalProperties: false
+      description: >
+        Known details shape for code TERMINAL_CONTEXT_ELEVATION_DENIED
+        (live /context/echo elevation deny). PHX-G208 per-code honesty;
+        other error codes may use different details keys.
+      required: [fields]
+      properties:
+        fields:
+          type: array
+          items:
+            type: string
+          description: Sorted denied elevation field names.
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      description: >
+        FastAPI HTTPException detail body for Ops routes (G197). Live emit uses
+        code/message and optional details (e.g. context elevation fields);
+        correlation_id is documented for header-derived context but is not
+        required on the detail object.
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          description: >
+            Optional structured denial context (G197/G204/G218). Known elevation
+            shape is composed via anyOf $ref to ContextElevationDenialDetails;
+            residual object allows other keys.
+          anyOf:
+            - $ref: "#/components/schemas/ContextElevationDenialDetails"
+            - type: object
+              additionalProperties: true
+        correlation_id:
+          type: [string, "null"]
+    ValidationErrorItem:
+      type: object
+      description: FastAPI/Pydantic request validation error item.
+      required: [loc, msg, type]
+      additionalProperties: true
+      properties:
+        loc:
+          type: array
+          items:
+            oneOf:
+              - type: string
+              - type: integer
+        msg:
+          type: string
+        type:
+          type: string
+    HTTPValidationError:
+      type: object
+      description: FastAPI request validation envelope (422 detail list).
+      additionalProperties: false
+      required: [detail]
+      properties:
+        detail:
+          type: array
+          items:
+            $ref: "#/components/schemas/ValidationErrorItem"
+    GatewayDetailError:
+      type: object
+      additionalProperties: false
+      required: [detail]
+      properties:
+        detail:
+          $ref: "#/components/schemas/ErrorResponse"
+  responses:
+    KernelError:
+      description: FastAPI HTTPException detail envelope (PHX-G166/G197)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/GatewayDetailError"
+tags:
+  - name: Ops
+    description: Gateway meta/ops surfaces (not domain Kernel APIs)

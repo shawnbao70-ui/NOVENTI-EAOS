@@ -1,0 +1,1135 @@
+openapi: 3.1.0
+info:
+  title: NOVENTI EAOS Workflow API
+  version: 1.0.11
+  description: |
+    PHX-G191 tightens Workflow status body field parity.
+    PHX-K09 Workflow Kernel HTTP contract. PHX-G164 documents status fence
+    field `approval_source_of_truth=workflow_kernel` (semantic deepen).
+    PHX-G166 aligns KernelError to GatewayDetailError.
+    PHX-G179 documents named Workflow status codes (400/403/404/409/503).
+    tenant_id, subject_id, session_id and platform_scope are derived by the
+    trusted authentication boundary and are never accepted from request bodies.
+servers:
+  - url: /v1
+security:
+  - bearerAuth: []
+paths:
+  /workflow/status:
+    get:
+      operationId: getWorkflowStatus
+      summary: Read-only Foundation status posture
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Workflow Foundation status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FoundationStatusEnvelope"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /workflow/definitions:
+    post:
+      operationId: createDefinition
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDefinitionRequest"
+      responses:
+        "201":
+          description: Workflow definition registered as ACTIVE
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UuidResult"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid definition payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Definition conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Workflow service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /workflow/definitions/{definitionId}/deprecation:
+    post:
+      operationId: deprecateDefinition
+      parameters:
+        - $ref: "#/components/parameters/DefinitionId"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VersionedReasonRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid deprecation payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Definition not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Version or state conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Workflow service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /workflow/instances:
+    post:
+      operationId: startInstance
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartInstanceRequest"
+      responses:
+        "201":
+          description: Workflow instance started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StartInstanceResult"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid start payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Definition not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Business key or version conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Workflow service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /workflow/instances/{instanceId}:
+    get:
+      operationId: getInstance
+      parameters:
+        - $ref: "#/components/parameters/InstanceId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Workflow instance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowInstance"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Instance not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Workflow service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /workflow/instances/{instanceId}/signals:
+    post:
+      operationId: signalInstance
+      parameters:
+        - $ref: "#/components/parameters/InstanceId"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignalRequest"
+      responses:
+        "200":
+          description: Signal applied or idempotently replayed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InstanceStatusResult"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid signal payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Instance not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Signal or state conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Workflow service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /workflow/instances/{instanceId}/cancellation:
+    post:
+      operationId: cancelInstance
+      parameters:
+        - $ref: "#/components/parameters/InstanceId"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CancelInstanceRequest"
+      responses:
+        "200":
+          description: Instance cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InstanceStatusResult"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid cancel payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "403":
+          description: Cancel forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Instance not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Invalid state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Workflow service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /workflow/instances/{instanceId}/compensation:
+    post:
+      operationId: compensateInstance
+      parameters:
+        - $ref: "#/components/parameters/InstanceId"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompensateInstanceRequest"
+      responses:
+        "200":
+          description: Instance compensation started or completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InstanceStatusResult"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid compensate payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Instance not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Invalid state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Workflow service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /workflow/instances/{instanceId}/tasks/{taskId}/approval:
+    post:
+      operationId: approveTask
+      parameters:
+        - $ref: "#/components/parameters/InstanceId"
+        - $ref: "#/components/parameters/TaskId"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskApprovalRequest"
+      responses:
+        "200":
+          description: Task approved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InstanceStatusResult"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid approval payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "403":
+          description: Not assignee or approval required/rejected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Approval expired or state conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Workflow service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /workflow/instances/{instanceId}/tasks/{taskId}/rejection:
+    post:
+      operationId: rejectTask
+      parameters:
+        - $ref: "#/components/parameters/InstanceId"
+        - $ref: "#/components/parameters/TaskId"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskRejectionRequest"
+      responses:
+        "200":
+          description: Task rejected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InstanceStatusResult"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid rejection payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "403":
+          description: Not assignee
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: State conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Workflow service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /workflow/instances/{instanceId}/tasks/{taskId}/escalation:
+    post:
+      operationId: escalateTask
+      parameters:
+        - $ref: "#/components/parameters/InstanceId"
+        - $ref: "#/components/parameters/TaskId"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskEscalationRequest"
+      responses:
+        "200":
+          description: Task escalated to a new assignee
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InstanceStatusResult"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid escalation payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "403":
+          description: Not assignee
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: State conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Workflow service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /workflow/tasks:
+    get:
+      operationId: listTasks
+      description: >
+        Returns tasks for the authenticated assignee by default. Callers with
+        workflow.task.read_all may query other assignees within the tenant.
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+        - name: assignee_subject_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/TaskStatus"
+      responses:
+        "200":
+          description: Tasks visible to the caller
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowTaskList"
+        "400":
+          description: Invalid list query
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Workflow service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    CorrelationId:
+      name: X-Correlation-ID
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    DefinitionId:
+      name: definitionId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    InstanceId:
+      name: instanceId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    TaskId:
+      name: taskId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    FoundationStatusEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/FoundationStatusData"
+    FoundationStatusData:
+      type: object
+      additionalProperties: false
+      description: >
+        PHX-G191 Workflow status fences plus PHX-G403 multi-step executable
+        narrow deepen (kernel task approve/reject/escalate; legacy multi-step
+        remains unimplemented).
+      required:
+        - writable
+        - approval_source_of_truth
+        - supported_surfaces
+        - multi_step_executable
+        - multi_step_scope
+        - legacy_multi_step_implemented
+        - escalation_fail_closed
+        - compensation_engine_invent
+        - sla_engine_invent
+        - commercial_auto_write
+      properties:
+        writable:
+          type: boolean
+          const: false
+        approval_source_of_truth:
+          type: string
+          const: workflow_kernel
+          description: >
+            Workflow Kernel remains the sole approval source of truth
+            (PHX-G164 status fence).
+        multi_step_executable:
+          type: boolean
+          const: true
+        multi_step_scope:
+          type: string
+          const: kernel_task_approve_reject_escalate
+        legacy_multi_step_implemented:
+          type: boolean
+          const: false
+        escalation_fail_closed:
+          type: boolean
+          const: true
+        compensation_engine_invent:
+          type: boolean
+          const: false
+        sla_engine_invent:
+          type: boolean
+          const: false
+        commercial_auto_write:
+          type: boolean
+          const: false
+        supported_surfaces:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          minItems: 1
+    WorkflowDefinitionStatus:
+      enum: [active, deprecated]
+    WorkflowStatus:
+      enum:
+        - running
+        - pending_approval
+        - approved
+        - rejected
+        - cancelled
+        - completed
+        - compensating
+        - compensated
+    TaskStatus:
+      enum: [pending, approved, rejected, cancelled]
+    CreateDefinitionRequest:
+      type: object
+      additionalProperties: false
+      required: [name, definition_document_ref, version]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        definition_document_ref:
+          type: string
+          minLength: 1
+          maxLength: 512
+        version:
+          type: string
+          minLength: 1
+          maxLength: 64
+    VersionedReasonRequest:
+      type: object
+      additionalProperties: false
+      required: [reason, expected_version]
+      properties:
+        reason:
+          type: string
+          minLength: 1
+        expected_version:
+          type: integer
+          minimum: 1
+    StartInstanceRequest:
+      type: object
+      additionalProperties: false
+      required: [definition_id, payload]
+      properties:
+        definition_id:
+          type: string
+          format: uuid
+        payload:
+          type: object
+          additionalProperties: true
+        business_key:
+          type: [string, "null"]
+          maxLength: 255
+        approval_principal_id:
+          type: [string, "null"]
+          format: uuid
+        approval_action:
+          type: [string, "null"]
+          minLength: 1
+          maxLength: 128
+        approval_resource_ref:
+          type: [string, "null"]
+          minLength: 1
+          maxLength: 512
+        approval_plan_version:
+          type: [string, "null"]
+          maxLength: 64
+        approval_scope:
+          type: [string, "null"]
+          maxLength: 255
+        approval_expires_at:
+          type: [string, "null"]
+          format: date-time
+        approval_subject_id:
+          type: [string, "null"]
+          format: uuid
+        due_at:
+          type: [string, "null"]
+          format: date-time
+    SignalRequest:
+      type: object
+      additionalProperties: false
+      required: [signal_name, idempotency_key, expected_version]
+      properties:
+        signal_name:
+          type: string
+          minLength: 1
+          maxLength: 128
+        idempotency_key:
+          type: string
+          minLength: 1
+          maxLength: 255
+        payload:
+          type: object
+          additionalProperties: true
+        expected_version:
+          type: integer
+          minimum: 1
+    CancelInstanceRequest:
+      type: object
+      additionalProperties: false
+      required: [reason, expected_version]
+      properties:
+        reason:
+          type: string
+          minLength: 1
+        expected_version:
+          type: integer
+          minimum: 1
+    CompensateInstanceRequest:
+      type: object
+      additionalProperties: false
+      required: [reason, expected_version]
+      properties:
+        reason:
+          type: string
+          minLength: 1
+        expected_version:
+          type: integer
+          minimum: 1
+    TaskApprovalRequest:
+      type: object
+      additionalProperties: false
+      required: [expected_instance_version, expected_task_version]
+      properties:
+        comment:
+          type: [string, "null"]
+          maxLength: 1000
+        expected_instance_version:
+          type: integer
+          minimum: 1
+        expected_task_version:
+          type: integer
+          minimum: 1
+    TaskRejectionRequest:
+      type: object
+      additionalProperties: false
+      required: [reason, expected_instance_version, expected_task_version]
+      properties:
+        reason:
+          type: string
+          minLength: 1
+        expected_instance_version:
+          type: integer
+          minimum: 1
+        expected_task_version:
+          type: integer
+          minimum: 1
+    TaskEscalationRequest:
+      type: object
+      additionalProperties: false
+      required:
+        [to_subject_id, reason, expected_instance_version, expected_task_version]
+      properties:
+        to_subject_id:
+          type: string
+          format: uuid
+        reason:
+          type: string
+          minLength: 1
+        expected_instance_version:
+          type: integer
+          minimum: 1
+        expected_task_version:
+          type: integer
+          minimum: 1
+    StartInstanceResult:
+      type: object
+      additionalProperties: false
+      required: [instance_id, status]
+      properties:
+        instance_id:
+          type: string
+          format: uuid
+        status:
+          $ref: "#/components/schemas/WorkflowStatus"
+        task_id:
+          type: [string, "null"]
+          format: uuid
+        audit_id:
+          type: [string, "null"]
+          format: uuid
+    InstanceStatusResult:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          $ref: "#/components/schemas/WorkflowStatus"
+        audit_id:
+          type: [string, "null"]
+          format: uuid
+    WorkflowInstance:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - definition_id
+        - status
+        - payload
+        - version
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        definition_id:
+          type: string
+          format: uuid
+        business_key:
+          type: [string, "null"]
+        status:
+          $ref: "#/components/schemas/WorkflowStatus"
+        payload:
+          type: object
+          additionalProperties: true
+        current_task_id:
+          type: [string, "null"]
+          format: uuid
+        approval_principal_id:
+          type: [string, "null"]
+          format: uuid
+        approval_action:
+          type: [string, "null"]
+        approval_resource_ref:
+          type: [string, "null"]
+        approval_plan_version:
+          type: [string, "null"]
+        approval_scope:
+          type: [string, "null"]
+        approval_expires_at:
+          type: [string, "null"]
+          format: date-time
+        version:
+          type: integer
+          minimum: 1
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    WorkflowTaskList:
+      type: array
+      description: Bare JSON array of workflow tasks (runtime list[WorkflowTaskResponse]).
+      items:
+        $ref: "#/components/schemas/WorkflowTask"
+    WorkflowTask:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - instance_id
+        - assignee_subject_id
+        - status
+        - version
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        instance_id:
+          type: string
+          format: uuid
+        assignee_subject_id:
+          type: string
+          format: uuid
+        status:
+          $ref: "#/components/schemas/TaskStatus"
+        due_at:
+          type: [string, "null"]
+          format: date-time
+        decision_comment:
+          type: [string, "null"]
+        escalated_from_subject_id:
+          type: [string, "null"]
+          format: uuid
+        version:
+          type: integer
+          minimum: 1
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    UuidResult:
+      type: object
+      additionalProperties: false
+      required: [id, data]
+      description: >
+        Unified UuidResult dialect (PHX-G170): `id` and `data` carry the same
+        UUID for backward-compatible clients of either pre-unification shape.
+      properties:
+        id:
+          type: string
+          format: uuid
+        data:
+          type: string
+          format: uuid
+        audit_id:
+          type: string
+          format: uuid
+    OkResponse:
+      type: object
+      additionalProperties: false
+      required: [ok]
+      properties:
+        ok:
+          const: true
+        audit_id:
+          type: [string, "null"]
+          format: uuid
+    ContextElevationDenialDetails:
+      type: object
+      additionalProperties: false
+      description: >
+        Known details shape for code TERMINAL_CONTEXT_ELEVATION_DENIED
+        (live /context/echo elevation deny). PHX-G208/G220 per-code honesty;
+        other error codes may use different details keys.
+      required: [fields]
+      properties:
+        fields:
+          type: array
+          items:
+            type: string
+          description: Sorted denied elevation field names.
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          description: >
+            Optional structured denial context (G202/G204/G216/G220). Known
+            elevation shape is composed via anyOf $ref to
+            ContextElevationDenialDetails; residual object allows other keys.
+          anyOf:
+            - $ref: "#/components/schemas/ContextElevationDenialDetails"
+            - type: object
+              additionalProperties: true
+        correlation_id:
+          type: [string, "null"]
+    ValidationErrorItem:
+      type: object
+      description: FastAPI/Pydantic request validation error item.
+      required: [loc, msg, type]
+      additionalProperties: true
+      properties:
+        loc:
+          type: array
+          items:
+            oneOf:
+              - type: string
+              - type: integer
+        msg:
+          type: string
+        type:
+          type: string
+    HTTPValidationError:
+      type: object
+      description: FastAPI request validation envelope (422 detail list).
+      additionalProperties: false
+      required: [detail]
+      properties:
+        detail:
+          type: array
+          items:
+            $ref: "#/components/schemas/ValidationErrorItem"
+    GatewayDetailError:
+      type: object
+      additionalProperties: false
+      required: [detail]
+      properties:
+        detail:
+          $ref: "#/components/schemas/ErrorResponse"
+  responses:
+    Ok:
+      description: Operation succeeded
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/OkResponse"
+    KernelError:
+      description: FastAPI HTTPException detail envelope (PHX-G166)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/GatewayDetailError"

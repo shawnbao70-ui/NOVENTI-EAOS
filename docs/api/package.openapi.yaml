@@ -1,0 +1,713 @@
+openapi: 3.1.0
+info:
+  title: NOVENTI EAOS Package Platform API
+  version: 1.0.12
+  description: |
+    PHX-G398 deepens Package status with Terminal resolve alignment honesty.
+    PHX-G262 closes Package manifest/request schemas (additionalProperties false).
+    PHX-G192/G193 tightens Package status body field parity.
+    PHX-B14 Business Package Platform HTTP contract. Security context is derived
+    by the trusted authentication boundary and never accepted from request bodies.
+    PHX-G180 documents named Package status codes (400/403/404/409/503).
+servers:
+  - url: /v1
+security:
+  - bearerAuth: []
+paths:
+  /packages/status:
+    get:
+      operationId: getPackageStatus
+      summary: Package status with Terminal resolve alignment honesty
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Package status (G193 + G398 Terminal resolve alignment)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PackageStatusEnvelope"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /packages/manifests:
+    post:
+      operationId: registerPackageManifest
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterManifestRequest"
+      responses:
+        "201":
+          description: Manifest registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UuidResult"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid manifest
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Version conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Package service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /packages/manifests/{manifestId}:
+    get:
+      operationId: getPackageManifest
+      parameters:
+        - $ref: "#/components/parameters/ManifestId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Package manifest
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PackageManifest"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Package not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Package service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /packages/manifests/{manifestId}/publish:
+    post:
+      operationId: publishPackageManifest
+      parameters:
+        - $ref: "#/components/parameters/ManifestId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Manifest published
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BooleanResult"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "400":
+          description: Invalid publish payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Package not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Version conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Package service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /packages/installations:
+    post:
+      operationId: installPackage
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InstallPackageRequest"
+      responses:
+        "201":
+          description: Package installed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UuidResult"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid install payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "403":
+          description: Kernel fork denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Package not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Already installed or not published
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Package service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /packages/installations/{installationId}/disable:
+    post:
+      operationId: disablePackageInstallation
+      parameters:
+        - $ref: "#/components/parameters/InstallationId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Installation disabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BooleanResult"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "400":
+          description: Invalid disable payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Package not installed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Version conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Package service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /packages/surfaces:
+    get:
+      operationId: listPackageSurfaces
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Installed package surfaces
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PackageSurfacesEnvelope"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "400":
+          description: Invalid list query
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Package not installed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Package service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /packages/actions/resolve:
+    post:
+      operationId: resolvePackageAction
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResolveActionRequest"
+      responses:
+        "200":
+          description: Resolved action contract
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResolvedAction"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "400":
+          description: Undeclared action/surface or invalid payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "403":
+          description: Permission denied for resolve
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Package not installed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Ambiguous action_key across active installations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "503":
+          description: Package service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    CorrelationId:
+      name: X-Correlation-Id
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    ManifestId:
+      name: manifestId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    InstallationId:
+      name: installationId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    PackageStatusEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/PackageStatusData"
+    PackageStatusData:
+      type: object
+      additionalProperties: false
+      description: >
+        PHX-G193 Package status plus PHX-G398 Terminal resolve alignment.
+        Terminal uses /packages/actions/resolve and /packages/surfaces; Terminal
+        does not hold business truth.
+      required:
+        - writable
+        - supported_surfaces
+        - action_resolve_surface
+        - surface_list_surface
+        - terminal_resolve_aligned
+        - terminal_holds_business_truth
+      properties:
+        writable:
+          type: boolean
+          const: false
+        supported_surfaces:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          minItems: 1
+        action_resolve_surface:
+          type: boolean
+          const: true
+        surface_list_surface:
+          type: boolean
+          const: true
+        terminal_resolve_aligned:
+          type: boolean
+          const: true
+        terminal_holds_business_truth:
+          type: boolean
+          const: false
+    UuidResult:
+      type: object
+      additionalProperties: false
+      required: [id, data]
+      description: >
+        Unified UuidResult dialect (PHX-G170): `id` and `data` carry the same
+        UUID for backward-compatible clients of either pre-unification shape.
+      properties:
+        id:
+          type: string
+          format: uuid
+        data:
+          type: string
+          format: uuid
+        audit_id:
+          type: string
+          format: uuid
+    BooleanResult:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: boolean
+        audit_id:
+          type: string
+          format: uuid
+    RegisterManifestRequest:
+      type: object
+      additionalProperties: false
+      required: [package_key, version, package_type]
+      properties:
+        package_key:
+          type: string
+          minLength: 1
+        version:
+          type: string
+          minLength: 1
+        package_type:
+          type: string
+          enum: [industry, business, ai, integration]
+        surfaces:
+          type: array
+          items:
+            $ref: "#/components/schemas/SurfaceDeclaration"
+        actions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActionDeclaration"
+        required_permissions:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeclaredPermission"
+        declared_events:
+          type: array
+          items:
+            type: string
+    InstallPackageRequest:
+      type: object
+      additionalProperties: false
+      required: [manifest_id]
+      properties:
+        manifest_id:
+          type: string
+          format: uuid
+    ResolveActionRequest:
+      type: object
+      additionalProperties: false
+      required: [action_key]
+      properties:
+        action_key:
+          type: string
+          minLength: 1
+    PackageSurfacesEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      description: >
+        Named list envelope for GET /packages/surfaces (PHX-G224).
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/SurfaceDeclaration"
+    SurfaceDeclaration:
+      type: object
+      additionalProperties: false
+      required: [surface_key, title]
+      properties:
+        surface_key:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+    ActionDeclaration:
+      type: object
+      additionalProperties: false
+      required: [action_key, resource_type, permission_action]
+      properties:
+        action_key:
+          type: string
+        resource_type:
+          type: string
+          description: Must use pkg.* prefix
+        permission_action:
+          type: string
+        high_impact:
+          type: boolean
+          default: false
+        surface_key:
+          type: string
+          nullable: true
+        description:
+          type: string
+    DeclaredPermission:
+      type: object
+      additionalProperties: false
+      required: [resource_type, actions]
+      properties:
+        resource_type:
+          type: string
+        actions:
+          type: array
+          items:
+            type: string
+          minItems: 1
+    PackageManifest:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - package_key
+        - version
+        - package_type
+        - status
+        - surfaces
+        - actions
+      properties:
+        id:
+          type: string
+          format: uuid
+        package_key:
+          type: string
+        version:
+          type: string
+        package_type:
+          type: string
+          enum: [industry, business, ai, integration]
+        status:
+          type: string
+          enum: [draft, published, deprecated]
+        surfaces:
+          type: array
+          items:
+            $ref: "#/components/schemas/SurfaceDeclaration"
+        actions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActionDeclaration"
+        required_permissions:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeclaredPermission"
+        declared_events:
+          type: array
+          items:
+            type: string
+    ResolvedAction:
+      type: object
+      additionalProperties: false
+      required:
+        - package_key
+        - manifest_version
+        - action_key
+        - resource_type
+        - permission_action
+        - high_impact
+        - installation_id
+        - source
+      properties:
+        package_key:
+          type: string
+        manifest_version:
+          type: string
+        action_key:
+          type: string
+        resource_type:
+          type: string
+        permission_action:
+          type: string
+        high_impact:
+          type: boolean
+        surface_key:
+          type: string
+          nullable: true
+        installation_id:
+          type: string
+          format: uuid
+        source:
+          type: string
+          enum: [package_manifest]
+          const: package_manifest
+    ContextElevationDenialDetails:
+      type: object
+      additionalProperties: false
+      description: >
+        Known details shape for code TERMINAL_CONTEXT_ELEVATION_DENIED
+        (live /context/echo elevation deny). PHX-G208/G220 per-code honesty;
+        other error codes may use different details keys.
+      required: [fields]
+      properties:
+        fields:
+          type: array
+          items:
+            type: string
+          description: Sorted denied elevation field names.
+    ErrorBody:
+      type: object
+      additionalProperties: false
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          description: >
+            Optional structured denial context (G202/G204/G216/G220). Known
+            elevation shape is composed via anyOf $ref to
+            ContextElevationDenialDetails; residual object allows other keys.
+          anyOf:
+            - $ref: "#/components/schemas/ContextElevationDenialDetails"
+            - type: object
+              additionalProperties: true
+    ValidationErrorItem:
+      type: object
+      description: FastAPI/Pydantic request validation error item.
+      required: [loc, msg, type]
+      additionalProperties: true
+      properties:
+        loc:
+          type: array
+          items:
+            oneOf:
+              - type: string
+              - type: integer
+        msg:
+          type: string
+        type:
+          type: string
+    HTTPValidationError:
+      type: object
+      description: FastAPI request validation envelope (422 detail list).
+      additionalProperties: false
+      required: [detail]
+      properties:
+        detail:
+          type: array
+          items:
+            $ref: "#/components/schemas/ValidationErrorItem"
+    GatewayDetailError:
+      type: object
+      additionalProperties: false
+      required: [detail]
+      properties:
+        detail:
+          $ref: "#/components/schemas/ErrorBody"
+  responses:
+    KernelError:
+      description: FastAPI HTTPException detail envelope (PHX-G166)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/GatewayDetailError"

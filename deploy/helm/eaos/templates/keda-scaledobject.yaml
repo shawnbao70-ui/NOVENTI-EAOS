@@ -1,0 +1,34 @@
+{{- if and .Values.keda.enabled .Values.autoscaling.enabled }}
+{{- fail "PHX-G58: keda and autoscaling (HPA) cannot both be enabled" }}
+{{- end }}
+{{- if and .Values.keda.enabled .Values.vpa.enabled }}
+{{- fail "PHX-G58: keda and vpa cannot both be enabled" }}
+{{- end }}
+{{- if .Values.keda.enabled }}
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{ include "eaos.gateway.fullname" . }}
+  labels:
+    {{- include "eaos.labels" . | nindent 4 }}
+    app.kubernetes.io/component: gateway
+spec:
+  scaleTargetRef:
+    name: {{ include "eaos.gateway.fullname" . }}
+  minReplicaCount: {{ .Values.keda.minReplicaCount }}
+  maxReplicaCount: {{ .Values.keda.maxReplicaCount }}
+  cooldownPeriod: {{ .Values.keda.cooldownPeriod }}
+  triggers:
+    {{- if .Values.keda.cpu.targetUtilizationPercentage }}
+    - type: cpu
+      metricType: Utilization
+      metadata:
+        value: {{ .Values.keda.cpu.targetUtilizationPercentage | quote }}
+    {{- end }}
+    {{- if .Values.keda.memory.targetUtilizationPercentage }}
+    - type: memory
+      metricType: Utilization
+      metadata:
+        value: {{ .Values.keda.memory.targetUtilizationPercentage | quote }}
+    {{- end }}
+{{- end }}

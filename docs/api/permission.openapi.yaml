@@ -1,0 +1,1483 @@
+openapi: 3.1.0
+info:
+  title: NOVENTI EAOS Permission API
+  version: 1.1.17
+  description: |
+    PHX-K08 Permission Kernel HTTP contract (PHX-G136 adds read-only
+    `/permission/roles` catalog listing; PHX-G146/G156/G161 Role→grant product
+    posture on `/permission/roles/status`; PHX-G161 env-gated Role→grant live
+    mint via `POST /permission/role-grants` when
+    `EAOS_ROLE_GRANT_AUTO_WRITE_ENABLED=true` and
+    `EAOS_PERMISSION_ROLE_GRANT_MAP` is non-empty; default remains 503
+    `GATEWAY_ROLE_GRANT_AUTO_WRITE_DISABLED`).
+    tenant_id, subject_id, session_id and platform_scope are derived by
+    the trusted authentication boundary and are never accepted from
+    request bodies. PHX-G345 adds the explicit, audited, tenant-only
+    `/permission/cap-grants` shell. Cap≠grant / title≠permission remain true:
+    the supplied capability is an audit label and each request mints a real
+    Kernel Grant; it never creates global authority or commercial side effects.
+    PHX-G179 documents named Permission status codes (400/403/404/409/503).
+    PHX-G185 tightens `RoleGrantProductPosture` to emitted field parity
+    (additionalProperties false; milestone const PHX-G161).
+servers:
+  - url: /v1
+security:
+  - bearerAuth: []
+paths:
+  /permission/cap-grants:
+    post:
+      operationId: createCapGrant
+      summary: Explicit audited Cap→grant tenant shell
+      description: >
+        PHX-G345. Grant administrators only. The capability is an audited label,
+        not a permission or global role. This endpoint creates one normal
+        tenant-scoped Kernel Grant and cannot execute commercial writes.
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CapGrantRequest"
+      responses:
+        "201":
+          description: Tenant grant created or idempotently returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UuidResult"
+        "400":
+          description: Invalid cap grant payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "403":
+          description: Grant administration authority or tenant eligibility required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Equivalent grant conflict without an idempotency key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema or non-tenant-scope validation failure
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        default:
+          $ref: "#/components/responses/KernelError"
+    get:
+      operationId: listCapGrants
+      summary: List tenant-visible grants for a grant administrator
+      parameters:
+        - name: principal_subject_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Tenant grants, optionally restricted to one principal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EffectivePermissionList"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /permission/cap-grants/{grantId}/revoke:
+    post:
+      operationId: revokeCapGrant
+      summary: Revoke a real grant through the Cap→grant shell
+      parameters:
+        - $ref: "#/components/parameters/GrantId"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CapGrantRevokeRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /permission/role-grants:
+    post:
+      operationId: mintRoleGrantsFromRoles
+      summary: Role→grant auto-write (env-gated live mint)
+      description: >
+        PHX-G161 Eng Explicit Defer `3` live mint under explicit PO (DAL-G006).
+        Default OFF → 503 GATEWAY_ROLE_GRANT_AUTO_WRITE_DISABLED.
+        When EAOS_ROLE_GRANT_AUTO_WRITE_ENABLED=true and
+        EAOS_PERMISSION_ROLE_GRANT_MAP is configured, expands supplied roles
+        into ordinary Permission grants (G128 relatives). Cap≠grant and
+        title≠permission remain fail-closed; never invents Cap→grant.
+      tags: [Permission]
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoleGrantAutoWriteRequest"
+      responses:
+        "200":
+          description: Grants minted from roles (live mint enabled)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleGrantAutoWriteMintResponse"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "400":
+          description: >
+            Validation failed (GatewayDetailError) or no grant pairs matched
+            (RoleGrantNoMatchDenialError; Cap≠grant remains false). PHX-G250.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/RoleGrantNoMatchDenialError"
+                  - $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: >
+            Closed-schema validation failure or missing body when live mint is enabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "503":
+          description: >
+            Auto-write disabled (default) or role grant map missing when enabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleGrantAutoWriteStubError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /permission/roles/status:
+    get:
+      operationId: getRoleCatalogStatus
+      summary: Read-only Foundation status posture
+      description: >
+        Roles catalog and grant-map status, including PHX-G146/G156/G161
+        role_grant_product posture (auto_grant_from_role_enabled from env;
+        auto_write_routes lists /permission/role-grants).
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Roles catalog, grant-map status, and Role→grant product posture
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleCatalogStatusEnvelope"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /permission/roles:
+    get:
+      operationId: listPermissionRoles
+      summary: Read-only aggregated EAOS roles catalog
+      description: >
+        Aggregates declared catalog, OIDC map targets, and grant-map keys.
+        Never writes grants. Distinct from platform declared-role admin
+        (`/platform/roles` in platform.openapi.yaml).
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Aggregated role catalog (flat payload; not a data envelope)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PermissionRoleCatalogResponse"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Role catalog store unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /permission/policies:
+    post:
+      operationId: createPolicy
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePolicyRequest"
+      responses:
+        "201":
+          description: Policy created in DRAFT
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UuidResult"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid policy payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Policy conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Permission service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /permission/policies/{policyId}/activation:
+    post:
+      operationId: activatePolicy
+      parameters:
+        - $ref: "#/components/parameters/PolicyId"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VersionedReasonRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid activation payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Policy not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Version or state conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Permission service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /permission/policies/{policyId}/deprecation:
+    post:
+      operationId: deprecatePolicy
+      parameters:
+        - $ref: "#/components/parameters/PolicyId"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VersionedReasonRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid deprecation payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Policy not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Version or state conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Permission service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /permission/grants:
+    post:
+      operationId: createGrant
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GrantRequest"
+      responses:
+        "201":
+          description: Direct grant created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UuidResult"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid grant payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "403":
+          description: Principal ineligible or cross-tenant forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Grant conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Permission service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /permission/grants/{grantId}/revocation:
+    post:
+      operationId: revokeGrant
+      parameters:
+        - $ref: "#/components/parameters/GrantId"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VersionedReasonRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid revocation payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Grant not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Grant already revoked or version conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Permission service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /permission/grants/{grantId}/delegations:
+    post:
+      operationId: delegateGrant
+      parameters:
+        - $ref: "#/components/parameters/GrantId"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DelegateRequest"
+      responses:
+        "201":
+          description: Delegated grant created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UuidResult"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid delegation payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "403":
+          description: Delegation forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Grant not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Grant conflict or revoked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Permission service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /permission/evaluations:
+    post:
+      operationId: evaluatePermission
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EvaluateRequest"
+      responses:
+        "200":
+          description: Authorization decision
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EvaluateResult"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid evaluate payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "403":
+          description: Permission denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Permission service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /permission/decisions/{decisionId}/explanation:
+    get:
+      operationId: explainDecision
+      parameters:
+        - $ref: "#/components/parameters/DecisionId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Decision explanation without secrets
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DecisionExplanation"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "400":
+          description: Invalid explain payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Decision or grant not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Permission service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /permission/principals/{subjectId}/effective-permissions:
+    get:
+      operationId: listEffectivePermissions
+      description: >
+        subjectId is the queried principal, not caller identity. Callers may
+        only query themselves unless configured as a trusted evaluation proxy
+        or permission auditor.
+      parameters:
+        - $ref: "#/components/parameters/SubjectId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Effective permissions after parent-chain, expiry and scope validation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EffectivePermissionList"
+        "400":
+          description: Invalid list query
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Permission service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    CorrelationId:
+      name: X-Correlation-ID
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    PolicyId:
+      name: policyId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    GrantId:
+      name: grantId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    DecisionId:
+      name: decisionId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    SubjectId:
+      name: subjectId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    RoleCatalogStatusEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/RoleCatalogStatus"
+    RoleCatalogStatus:
+      type: object
+      additionalProperties: false
+      required:
+        - catalog_store
+        - catalog_enabled
+        - role_count
+        - grant_map_enabled
+        - grant_map_role_count
+        - source_counts
+        - role_grant_product
+      properties:
+        catalog_store:
+          type: string
+          enum: [process_memory]
+          const: process_memory
+          description: Process-local catalog store (G85/G195/G206).
+        catalog_enabled:
+          type: boolean
+        role_count:
+          type: integer
+          minimum: 0
+        grant_map_enabled:
+          type: boolean
+        grant_map_role_count:
+          type: integer
+          minimum: 0
+        source_counts:
+          $ref: '#/components/schemas/RoleCatalogSourceCounts'
+        role_grant_product:
+          $ref: "#/components/schemas/RoleGrantProductPosture"
+    RoleCatalogSourceCounts:
+      type: object
+      additionalProperties: false
+      required: [catalog, oidc_map, grant_map]
+      description: >-
+        Source contribution counts for role catalog evaluation (G195 field parity).
+      properties:
+        catalog:
+          type: integer
+          minimum: 0
+        oidc_map:
+          type: integer
+          minimum: 0
+        grant_map:
+          type: integer
+          minimum: 0
+    RoleGrantProductPosture:
+      type: object
+      additionalProperties: false
+      description: >
+        PHX-G146/G156/G161/G185 Foundation Role→grant product posture. Read-only;
+        mirrors live `role_grant_product_posture()` emit. Manual grant write
+        remains G128/G129; evaluate-only map remains G83. Cap≠grant and
+        title≠permission stay fail-closed. Never Cap→grant.
+      required:
+        - surface
+        - milestone
+        - auto_grant_from_role_enabled
+        - role_grant_map_configured
+        - role_grant_live_mint_ready
+        - auto_write_routes
+        - auto_write_stub_observability
+        - auto_write_default_off
+        - manual_grant_relatives
+        - evaluate_only_relative
+        - fail_closed_reasons
+      properties:
+        surface:
+          type: string
+          const: foundation_role_grant_product
+        milestone:
+          type: string
+          const: PHX-G161
+        auto_grant_from_role_enabled:
+          type: boolean
+          description: >
+            True only when EAOS_ROLE_GRANT_AUTO_WRITE_ENABLED is set
+            (default false → fail-closed 503).
+        role_grant_map_configured:
+          type: boolean
+        role_grant_live_mint_ready:
+          type: boolean
+          description: enabled AND non-empty EAOS_PERMISSION_ROLE_GRANT_MAP
+        auto_write_routes:
+          type: array
+          items:
+            type: string
+          minItems: 1
+          description: >
+            Named auto-write paths (OpenAPI /permission prefix).
+            Lists /permission/role-grants.
+        auto_write_stub_observability:
+          type: boolean
+          description: 503 detail includes auto_write_step when mint is off
+        auto_write_default_off:
+          type: boolean
+          const: true
+        manual_grant_relatives:
+          type: string
+          const: g128_g129
+        evaluate_only_relative:
+          type: string
+          const: g83_role_grant_map
+        fail_closed_reasons:
+          type: array
+          items:
+            type: string
+          minItems: 1
+    RoleGrantAutoWriteRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - principal_id
+        - roles
+      properties:
+        principal_id:
+          type: string
+          format: uuid
+        roles:
+          type: array
+          items:
+            type: string
+          minItems: 1
+          description: Role names expanded via EAOS_PERMISSION_ROLE_GRANT_MAP
+        scope_level:
+          type: string
+          enum: [resource, org_unit, enterprise, tenant]
+          default: tenant
+        scope_ref_id:
+          type: [string, "null"]
+          format: uuid
+        resource_id:
+          type: [string, "null"]
+          format: uuid
+        expires_at:
+          type: [string, "null"]
+          format: date-time
+        delegable:
+          type: boolean
+          default: false
+        delegation_depth:
+          type: integer
+          minimum: 0
+          default: 0
+        conditions_ref:
+          type: [string, "null"]
+    RoleGrantAutoWriteMintResponse:
+      type: object
+      additionalProperties: false
+      description: >
+        Live Role→grant mint payload (PHX-G161/G196). Emitted only when
+        EAOS_ROLE_GRANT_AUTO_WRITE_ENABLED=true and role grant map is configured.
+        Cap≠grant / title≠permission remain fail-closed.
+      required:
+        - auto_write_step
+        - grant_minted
+        - cap_is_grant
+        - title_is_permission
+        - milestone
+        - principal_id
+        - roles_applied
+        - grants
+        - grant_count
+        - audit_id
+      properties:
+        auto_write_step:
+          type: string
+          enum: [role_grants]
+          const: role_grants
+        grant_minted:
+          type: boolean
+          const: true
+        cap_is_grant:
+          type: boolean
+          const: false
+        title_is_permission:
+          type: boolean
+          const: false
+        milestone:
+          type: string
+          const: PHX-G161
+        principal_id:
+          type: string
+          format: uuid
+        roles_applied:
+          type: array
+          items:
+            type: string
+        grants:
+          type: array
+          items:
+            $ref: '#/components/schemas/RoleGrantMintedGrant'
+        grant_count:
+          type: integer
+          minimum: 0
+        audit_id:
+          type: [string, "null"]
+          format: uuid
+    RoleGrantMintedGrant:
+      type: object
+      additionalProperties: false
+      required: [id, resource_type, actions, roles]
+      description: One Permission grant minted from role→(type,action) map expansion.
+      properties:
+        id:
+          type: string
+          format: uuid
+        resource_type:
+          type: string
+          minLength: 1
+        actions:
+          type: array
+          items:
+            type: string
+        roles:
+          type: array
+          items:
+            type: string
+          description: Roles that contributed pairs for this resource_type
+    RoleGrantNoMatchDenialDetail:
+      type: object
+      additionalProperties: false
+      description: >
+        Live 400 when roles match no grant pairs in EAOS_PERMISSION_ROLE_GRANT_MAP
+        (PHX-G250). Cap≠grant / title≠permission remain false.
+      required:
+        - code
+        - message
+        - grant_minted
+        - cap_is_grant
+        - title_is_permission
+        - roles
+        - milestone
+      properties:
+        code:
+          type: string
+          const: COMMON_VALIDATION_FAILED
+        message:
+          type: string
+        grant_minted:
+          type: boolean
+          const: false
+        cap_is_grant:
+          type: boolean
+          const: false
+        title_is_permission:
+          type: boolean
+          const: false
+        roles:
+          type: array
+          items:
+            type: string
+          minItems: 1
+        milestone:
+          type: string
+          const: PHX-G161
+        correlation_id:
+          type: [string, "null"]
+    RoleGrantNoMatchDenialError:
+      type: object
+      additionalProperties: false
+      required: [detail]
+      properties:
+        detail:
+          $ref: "#/components/schemas/RoleGrantNoMatchDenialDetail"
+    RoleGrantAutoWriteStubDetail:
+      type: object
+      additionalProperties: false
+      description: >
+        Fail-closed 503 detail for Role→grant auto-write (G156/G161/G196).
+        Mirrors raise_role_grant_auto_write_disabled / raise_role_grant_map_required.
+      required:
+        - code
+        - message
+        - auto_write_step
+        - grant_minted
+        - cap_is_grant
+        - title_is_permission
+        - next_action
+        - milestone
+      properties:
+        code:
+          type: string
+          enum:
+            - GATEWAY_ROLE_GRANT_AUTO_WRITE_DISABLED
+            - GATEWAY_ROLE_GRANT_MAP_REQUIRED
+        message:
+          type: string
+        auto_write_step:
+          type: string
+          enum: [role_grants]
+          const: role_grants
+        grant_minted:
+          type: boolean
+          const: false
+        cap_is_grant:
+          type: boolean
+          const: false
+        title_is_permission:
+          type: boolean
+          const: false
+        next_action:
+          type: string
+          enum: [none, configure_permission_role_grant_map]
+        milestone:
+          type: string
+          const: PHX-G161
+    RoleGrantAutoWriteStubError:
+      type: object
+      additionalProperties: false
+      required: [detail]
+      properties:
+        detail:
+          $ref: "#/components/schemas/RoleGrantAutoWriteStubDetail"
+    PermissionRoleCatalogResponse:
+      type: object
+      additionalProperties: false
+      required: [enabled, roles]
+      description: Flat runtime shape from GET /permission/roles (not {data:...})
+      properties:
+        enabled:
+          type: boolean
+        roles:
+          type: array
+          items:
+            $ref: "#/components/schemas/PermissionRoleCatalogEntry"
+    PermissionRoleCatalogEntry:
+      type: object
+      additionalProperties: false
+      required: [name, sources]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        sources:
+          type: array
+          items:
+            type: string
+            enum: [catalog, oidc_map, grant_map]
+        grants:
+          type: array
+          description: Present only when grant-map pairs exist for the role
+          items:
+            type: object
+            additionalProperties: false
+            required: [resource_type, action]
+            properties:
+              resource_type:
+                type: string
+              action:
+                type: string
+    ScopeLevel:
+      enum: [resource, org_unit, enterprise, tenant]
+    PolicyEffect:
+      enum: [allow, deny]
+    PolicyRule:
+      type: object
+      additionalProperties: false
+      required: [effect, actions, resource_type, scope_level]
+      properties:
+        effect:
+          $ref: "#/components/schemas/PolicyEffect"
+        actions:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            minLength: 1
+            maxLength: 128
+        resource_type:
+          type: string
+          minLength: 1
+          maxLength: 128
+        scope_level:
+          $ref: "#/components/schemas/ScopeLevel"
+        scope_ref_id:
+          type: [string, "null"]
+          format: uuid
+        condition_ref:
+          type: [string, "null"]
+          maxLength: 255
+    CreatePolicyRequest:
+      type: object
+      additionalProperties: false
+      required: [name, rules]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        rules:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/PolicyRule"
+    VersionedReasonRequest:
+      type: object
+      additionalProperties: false
+      required: [reason, expected_version]
+      properties:
+        reason:
+          type: string
+          minLength: 1
+        expected_version:
+          type: integer
+          minimum: 1
+    GrantRequest:
+      type: object
+      additionalProperties: false
+      required: [principal_id, resource_type, scope_level, actions]
+      properties:
+        principal_id:
+          type: string
+          format: uuid
+        resource_type:
+          type: string
+          minLength: 1
+          maxLength: 128
+        resource_id:
+          type: [string, "null"]
+          format: uuid
+        scope_level:
+          $ref: "#/components/schemas/ScopeLevel"
+        scope_ref_id:
+          type: [string, "null"]
+          format: uuid
+        actions:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            minLength: 1
+            maxLength: 128
+        conditions_ref:
+          type: [string, "null"]
+          maxLength: 255
+        expires_at:
+          type: [string, "null"]
+          format: date-time
+        delegable:
+          type: boolean
+          default: false
+        delegation_depth:
+          type: integer
+          minimum: 0
+          default: 0
+    CapGrantRequest:
+      type: object
+      additionalProperties: false
+      description: >
+        PHX-G345 audit-labelled Cap→grant request. The fixed tenant scope
+        intentionally excludes enterprise, platform, resource, and cross-tenant
+        grants from this shell.
+      required: [principal_subject_id, capability, resource_type, actions]
+      properties:
+        principal_subject_id:
+          type: string
+          format: uuid
+        capability:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Audited source capability label; it is not a global role.
+        resource_type:
+          type: string
+          minLength: 1
+          maxLength: 128
+        actions:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            minLength: 1
+        scope_level:
+          type: string
+          const: tenant
+          default: tenant
+        idempotency_key:
+          type: [string, "null"]
+          minLength: 1
+          maxLength: 255
+    CapGrantRevokeRequest:
+      type: object
+      additionalProperties: false
+      required: [reason, expected_version]
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          default: capability grant revoked
+        expected_version:
+          type: integer
+          minimum: 1
+          default: 1
+    DelegateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        [delegatee_principal_id, scope_level, actions, expected_version]
+      properties:
+        delegatee_principal_id:
+          type: string
+          format: uuid
+        resource_type:
+          type: [string, "null"]
+          maxLength: 128
+        resource_id:
+          type: [string, "null"]
+          format: uuid
+        scope_level:
+          $ref: "#/components/schemas/ScopeLevel"
+        scope_ref_id:
+          type: [string, "null"]
+          format: uuid
+        actions:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            minLength: 1
+            maxLength: 128
+        expires_at:
+          type: [string, "null"]
+          format: date-time
+        expected_version:
+          type: integer
+          minimum: 1
+    EvaluateRequest:
+      type: object
+      additionalProperties: false
+      required: [action, resource_type]
+      properties:
+        action:
+          type: string
+          minLength: 1
+          maxLength: 128
+        resource_type:
+          type: string
+          minLength: 1
+          maxLength: 128
+        resource_id:
+          type: [string, "null"]
+          format: uuid
+    EvaluateResult:
+      type: object
+      additionalProperties: false
+      required: [decision_id, effect, reason_code, policy_version]
+      description: >
+        Runtime policy_version is a string (may be a single version or joined
+        versions). Foundation harden aligns OpenAPI with runtime dialect.
+      properties:
+        decision_id:
+          type: string
+          format: uuid
+        effect:
+          $ref: "#/components/schemas/PolicyEffect"
+        reason_code:
+          type: string
+        policy_version:
+          type: string
+          minLength: 1
+        audit_id:
+          type: [string, "null"]
+          format: uuid
+    DecisionExplanation:
+      type: object
+      additionalProperties: false
+      required:
+        [decision_id, effect, reason_code, policy_version, evidence_summary]
+      properties:
+        decision_id:
+          type: string
+          format: uuid
+        effect:
+          $ref: "#/components/schemas/PolicyEffect"
+        reason_code:
+          type: string
+        policy_version:
+          type: string
+          minLength: 1
+        matched_policy_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        matched_grant_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        matched_roles:
+          type: array
+          items:
+            type: string
+        scope_trace:
+          type: array
+          items:
+            type: string
+        condition_outcomes:
+          type: array
+          items:
+            type: string
+        evidence_summary:
+          type: string
+    EffectivePermissionList:
+      type: array
+      description: Bare JSON array of effective grants (runtime list[EffectivePermission]).
+      items:
+        $ref: "#/components/schemas/EffectivePermission"
+    EffectivePermission:
+      type: object
+      additionalProperties: false
+      required:
+        [grant_id, resource_type, scope_level, actions, effect]
+      properties:
+        grant_id:
+          type: string
+          format: uuid
+        resource_type:
+          type: string
+        resource_id:
+          type: [string, "null"]
+          format: uuid
+        scope_level:
+          $ref: "#/components/schemas/ScopeLevel"
+        scope_ref_id:
+          type: [string, "null"]
+          format: uuid
+        actions:
+          type: array
+          items:
+            type: string
+        effect:
+          $ref: "#/components/schemas/PolicyEffect"
+        expires_at:
+          type: [string, "null"]
+          format: date-time
+    UuidResult:
+      type: object
+      additionalProperties: false
+      required: [id, data]
+      description: >
+        Unified UuidResult dialect (PHX-G170): `id` and `data` carry the same
+        UUID for backward-compatible clients of either pre-unification shape.
+      properties:
+        id:
+          type: string
+          format: uuid
+        data:
+          type: string
+          format: uuid
+        audit_id:
+          type: string
+          format: uuid
+    OkResponse:
+      type: object
+      additionalProperties: false
+      required: [ok]
+      properties:
+        ok:
+          const: true
+        audit_id:
+          type: [string, "null"]
+          format: uuid
+    ContextElevationDenialDetails:
+      type: object
+      additionalProperties: false
+      description: >
+        Known details shape for code TERMINAL_CONTEXT_ELEVATION_DENIED
+        (live /context/echo elevation deny). PHX-G208/G220 per-code honesty;
+        other error codes may use different details keys.
+      required: [fields]
+      properties:
+        fields:
+          type: array
+          items:
+            type: string
+          description: Sorted denied elevation field names.
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          description: >
+            Optional structured denial context (G202/G204/G216/G220). Known
+            elevation shape is composed via anyOf $ref to
+            ContextElevationDenialDetails; residual object allows other keys.
+          anyOf:
+            - $ref: "#/components/schemas/ContextElevationDenialDetails"
+            - type: object
+              additionalProperties: true
+        correlation_id:
+          type: [string, "null"]
+    ValidationErrorItem:
+      type: object
+      description: FastAPI/Pydantic request validation error item.
+      required: [loc, msg, type]
+      additionalProperties: true
+      properties:
+        loc:
+          type: array
+          items:
+            oneOf:
+              - type: string
+              - type: integer
+        msg:
+          type: string
+        type:
+          type: string
+    HTTPValidationError:
+      type: object
+      description: FastAPI request validation envelope (422 detail list).
+      additionalProperties: false
+      required: [detail]
+      properties:
+        detail:
+          type: array
+          items:
+            $ref: "#/components/schemas/ValidationErrorItem"
+    GatewayDetailError:
+      type: object
+      additionalProperties: false
+      required: [detail]
+      properties:
+        detail:
+          $ref: "#/components/schemas/ErrorResponse"
+  responses:
+    Ok:
+      description: Operation succeeded
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/OkResponse"
+    KernelError:
+      description: FastAPI HTTPException detail envelope (PHX-G166)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/GatewayDetailError"

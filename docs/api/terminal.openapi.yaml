@@ -1,0 +1,1290 @@
+openapi: 3.1.0
+info:
+  title: NOVENTI EAOS Smart Terminal API
+  version: 1.1.14
+  description: |
+    PHX-G396/G397 deepen Terminal status with extension signature posture and
+    plugin invoke fail-closed honesty (sandboxed; executed=false).
+    PHX-G264 closes Terminal session/request schemas (additionalProperties false).
+    PHX-G193 adds read-only Terminal Foundation status posture.
+    PHX-G198 documents GET /terminal/extensions list envelope field parity.
+    PHX-G199 documents POST /terminal/extensions/{id}/actions invoke envelope.
+    PHX-T13 / G39 Smart Terminal HTTP contract. tenant_id, subject_id, session_id and
+    platform_scope are derived by the trusted authentication boundary and are
+    never accepted from request bodies as authoritative security context.
+    Extension Host (G39) registers sandboxed manifests; Foundation does not execute
+    arbitrary extension code. PHX-G166 aligns KernelError to GatewayDetailError; PHX-G180 documents named Terminal status codes (400/403/404/409/503);
+    PHX-G170 unifies UuidResult to dual-key `{id,data}`.
+servers:
+  - url: /v1
+security:
+  - bearerAuth: []
+paths:
+  /terminal/status:
+    get:
+      operationId: getTerminalStatus
+      summary: Terminal status with signature and invoke fail-closed honesty
+      tags: [Terminal]
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Terminal status (G193 + G396/G397 honesty)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TerminalStatusEnvelope"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /terminal/sessions:
+    post:
+      operationId: openTerminalSession
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OpenSessionRequest"
+      responses:
+        "201":
+          description: Terminal session opened
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UuidResult"
+        "400":
+          description: Invalid session payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "403":
+          description: Device untrusted or secret denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "503":
+          description: Terminal service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /terminal/sessions/{terminalSessionId}:
+    get:
+      operationId: getTerminalSession
+      parameters:
+        - $ref: "#/components/parameters/TerminalSessionId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Terminal session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TerminalSession"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Terminal service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+    post:
+      operationId: closeTerminalSession
+      parameters:
+        - $ref: "#/components/parameters/TerminalSessionId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Session closed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BooleanResult"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Terminal service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /terminal/intents:
+    post:
+      operationId: composeIntent
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ComposeIntentRequest"
+      responses:
+        "201":
+          description: Intent composed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UuidResult"
+        "400":
+          description: Invalid intent payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "403":
+          description: Context elevation denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "503":
+          description: Terminal service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /terminal/intents/{intentId}:
+    get:
+      operationId: getIntent
+      parameters:
+        - $ref: "#/components/parameters/IntentId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Intent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TerminalIntent"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Intent not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Terminal service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /terminal/previews:
+    post:
+      operationId: buildPreview
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BuildPreviewRequest"
+      responses:
+        "201":
+          description: Plan preview built
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UuidResult"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "400":
+          description: Invalid preview payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Intent not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "503":
+          description: Terminal service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /terminal/previews/{previewId}:
+    get:
+      operationId: getPreview
+      parameters:
+        - $ref: "#/components/parameters/PreviewId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Plan preview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlanPreview"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Preview not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Stale preview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Terminal service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /terminal/previews/{previewId}/approvals:
+    post:
+      operationId: requestApproval
+      parameters:
+        - $ref: "#/components/parameters/PreviewId"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RequestApprovalRequest"
+      responses:
+        "201":
+          description: Workflow approval started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UuidResult"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid approval request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "403":
+          description: Approval invalid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Preview not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Terminal service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+    get:
+      operationId: presentApproval
+      parameters:
+        - $ref: "#/components/parameters/PreviewId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Approval presentation from Workflow truth
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovalPresentation"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Approval not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Terminal service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /terminal/previews/{previewId}/commits:
+    post:
+      operationId: commitPreview
+      parameters:
+        - $ref: "#/components/parameters/PreviewId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Commit receipt (not business entity truth)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommitReceipt"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "403":
+          description: Commit forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Preview not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Stale preview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Terminal service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /terminal/extensions:
+    get:
+      operationId: listTerminalExtensions
+      summary: List registered Terminal extensions for the tenant
+      description: >
+        Returns sandboxed Extension Host registrations (G39/G198). Does not
+        execute arbitrary extension code. Envelope is {data:[...]} matching
+        serialize_extension_list().
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Registered extensions for the tenant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TerminalExtensionListEnvelope"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+    post:
+      operationId: registerTerminalExtension
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterExtensionRequest"
+      responses:
+        "201":
+          description: Extension registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UuidResult"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "400":
+          description: Invalid extension payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "403":
+          description: Unsigned/invalid signature or sandbox denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Extension conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "503":
+          description: Terminal service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /terminal/extensions/{extensionId}/activate:
+    post:
+      operationId: activateTerminalExtension
+      parameters:
+        - name: extensionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Extension activated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BooleanResult"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "400":
+          description: Invalid activation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "403":
+          description: Signature/sandbox denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Extension not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Terminal service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /terminal/extensions/{extensionId}/revoke:
+    post:
+      operationId: revokeTerminalExtension
+      parameters:
+        - name: extensionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Extension revoked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BooleanResult"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "400":
+          description: Invalid revocation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Extension not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Already revoked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Terminal service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /terminal/extensions/{extensionId}/actions:
+    post:
+      operationId: invokeTerminalExtensionAction
+      parameters:
+        - name: extensionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InvokeExtensionRequest"
+      responses:
+        "200":
+          description: Sandboxed invoke accepted (no arbitrary code execution)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TerminalExtensionInvokeEnvelope"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid invoke payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "403":
+          description: Extension revoked or sandbox denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Extension not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Terminal service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    CorrelationId:
+      name: X-Correlation-Id
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    TerminalSessionId:
+      name: terminalSessionId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    IntentId:
+      name: intentId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    PreviewId:
+      name: previewId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    TerminalStatusEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/TerminalStatusData"
+    TerminalStatusData:
+      type: object
+      additionalProperties: false
+      description: >
+        PHX-G193 Terminal status plus PHX-G396 signature posture and
+        PHX-G397 plugin invoke fail-closed honesty. Terminal does not hold
+        business truth; invoke remains sandboxed with executed=false.
+      required:
+        - writable
+        - supported_surfaces
+        - holds_business_truth
+        - extension_signature_required_on_activate
+        - unsigned_extension_activate
+        - extension_signature_algs
+        - extension_invoke_mode
+        - extension_invoke_executed
+        - invoke_fail_closed_without_grant
+        - extension_signature_bypass
+        - sandbox_escape
+        - admin_strip_consistent
+        - extension_host_path
+        - openapi_inventory_synced
+      properties:
+        writable:
+          type: boolean
+          const: false
+        supported_surfaces:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          minItems: 1
+        holds_business_truth:
+          type: boolean
+          const: false
+        extension_signature_required_on_activate:
+          type: boolean
+          const: true
+        unsigned_extension_activate:
+          type: string
+          const: fail_closed
+        extension_signature_algs:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          minItems: 1
+        extension_invoke_mode:
+          type: string
+          const: sandboxed
+        extension_invoke_executed:
+          type: boolean
+          const: false
+        invoke_fail_closed_without_grant:
+          type: boolean
+          const: true
+        extension_signature_bypass:
+          type: boolean
+          const: false
+        sandbox_escape:
+          type: boolean
+          const: false
+        admin_strip_consistent:
+          type: boolean
+          const: true
+        extension_host_path:
+          type: string
+          const: allowlisted_only
+        openapi_inventory_synced:
+          type: boolean
+          const: true
+    UuidResult:
+      type: object
+      additionalProperties: false
+      required: [id, data]
+      description: >
+        Unified UuidResult dialect (PHX-G170): `id` and `data` carry the same
+        UUID for backward-compatible clients of either pre-unification shape.
+      properties:
+        id:
+          type: string
+          format: uuid
+        data:
+          type: string
+          format: uuid
+        audit_id:
+          type: string
+          format: uuid
+    BooleanResult:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: boolean
+        audit_id:
+          type: string
+          format: uuid
+    OpenSessionRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        device_trust:
+          type: string
+          enum: [trusted, untrusted]
+          default: trusted
+        claimed_tenant_id:
+          type: string
+          format: uuid
+          description: Optional; must match derived tenant or elevation denied
+        claimed_subject_id:
+          type: string
+          format: uuid
+          description: Optional; must match derived subject or elevation denied
+    ComposeIntentRequest:
+      type: object
+      additionalProperties: false
+      required: [terminal_session_id, text]
+      properties:
+        terminal_session_id:
+          type: string
+          format: uuid
+        text:
+          type: string
+          minLength: 1
+    BuildPreviewRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - intent_id
+        - action
+        - resource_ref
+        - plan_version
+        - scope
+        - impact_summary
+      properties:
+        intent_id:
+          type: string
+          format: uuid
+        action:
+          type: string
+          minLength: 1
+        resource_ref:
+          type: string
+          minLength: 1
+        plan_version:
+          type: string
+          minLength: 1
+        scope:
+          type: string
+          minLength: 1
+        impact_summary:
+          type: string
+          minLength: 1
+        high_impact:
+          type: boolean
+          default: false
+    RequestApprovalRequest:
+      type: object
+      additionalProperties: false
+      required: [definition_id, approval_subject_id]
+      properties:
+        definition_id:
+          type: string
+          format: uuid
+        approval_subject_id:
+          type: string
+          format: uuid
+    TerminalSession:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - tenant_id
+        - subject_id
+        - device_trust
+        - status
+        - correlation_id
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: string
+          format: uuid
+        subject_id:
+          type: string
+          format: uuid
+        device_trust:
+          type: string
+          enum: [trusted, untrusted]
+        status:
+          type: string
+          enum: [open, closed]
+        correlation_id:
+          type: string
+        identity_session_id:
+          type: string
+          format: uuid
+          nullable: true
+        version:
+          type: integer
+          minimum: 1
+    TerminalIntent:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - tenant_id
+        - subject_id
+        - terminal_session_id
+        - text
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: string
+          format: uuid
+        subject_id:
+          type: string
+          format: uuid
+        terminal_session_id:
+          type: string
+          format: uuid
+        text:
+          type: string
+        status:
+          type: string
+          enum: [draft, previewed, cancelled]
+        version:
+          type: integer
+          minimum: 1
+    PlanPreview:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - intent_id
+        - action
+        - resource_ref
+        - plan_version
+        - scope
+        - impact_summary
+        - high_impact
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+        intent_id:
+          type: string
+          format: uuid
+        action:
+          type: string
+        resource_ref:
+          type: string
+        plan_version:
+          type: string
+        scope:
+          type: string
+        impact_summary:
+          type: string
+        high_impact:
+          type: boolean
+        status:
+          type: string
+          enum: [active, invalidated, committed]
+        approval_ref:
+          type: string
+          nullable: true
+        version:
+          type: integer
+          minimum: 1
+    ApprovalPresentation:
+      type: object
+      additionalProperties: false
+      required: [preview_id, source]
+      properties:
+        preview_id:
+          type: string
+          format: uuid
+        approval_ref:
+          type: string
+          nullable: true
+        workflow_status:
+          type: string
+          nullable: true
+        approval_action:
+          type: string
+          nullable: true
+        approval_resource_ref:
+          type: string
+          nullable: true
+        approval_plan_version:
+          type: string
+          nullable: true
+        approval_scope:
+          type: string
+          nullable: true
+        source:
+          type: string
+          enum: [workflow]
+          const: workflow
+    CommitReceipt:
+      type: object
+      additionalProperties: false
+      required:
+        - preview_id
+        - action
+        - resource_ref
+        - plan_version
+        - approved
+        - verified_against
+        - correlation_id
+      properties:
+        preview_id:
+          type: string
+          format: uuid
+        action:
+          type: string
+        resource_ref:
+          type: string
+        plan_version:
+          type: string
+        approved:
+          type: boolean
+        verified_against:
+          type: string
+          enum: [permission, workflow+permission]
+        correlation_id:
+          type: string
+    TerminalExtensionListEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      description: >
+        List envelope for GET /terminal/extensions (G198). Mirrors
+        serialize_extension_list().
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/TerminalExtensionEntry'
+    TerminalExtensionEntry:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - extension_key
+        - version
+        - signature_ref
+        - status
+        - declared_capabilities
+        - declared_actions
+        - allowed_surfaces
+        - data_scope
+      description: >
+        One Extension Host registration (G39/G198). Field parity with
+        serialize_extension().
+      properties:
+        id:
+          type: string
+          format: uuid
+        extension_key:
+          type: string
+          minLength: 1
+        version:
+          type: string
+          minLength: 1
+        signature_ref:
+          type: [string, "null"]
+        status:
+          type: string
+          enum: [registered, active, revoked]
+        declared_capabilities:
+          type: array
+          items:
+            type: string
+        declared_actions:
+          type: array
+          items:
+            type: string
+        allowed_surfaces:
+          type: array
+          items:
+            type: string
+        data_scope:
+          type: string
+    RegisterExtensionRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - extension_key
+        - version
+        - declared_actions
+        - allowed_surfaces
+        - data_scope
+      properties:
+        extension_key:
+          type: string
+        version:
+          type: string
+        signature_ref:
+          type: string
+        declared_capabilities:
+          type: array
+          items:
+            type: string
+        declared_actions:
+          type: array
+          items:
+            type: string
+          minItems: 1
+        allowed_surfaces:
+          type: array
+          items:
+            type: string
+          minItems: 1
+        data_scope:
+          type: string
+          minLength: 1
+    TerminalExtensionInvokeEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      description: >
+        Sandboxed invoke envelope (G199). Mirrors gateway
+        {data, audit_id?} for declaration-only invoke — executed is always false.
+      properties:
+        data:
+          $ref: '#/components/schemas/TerminalExtensionInvokeData'
+        audit_id:
+          type: [string, "null"]
+          format: uuid
+    TerminalExtensionInvokeData:
+      type: object
+      additionalProperties: false
+      required: [extension_id, action, surface, status, executed]
+      description: >
+        Declaration-only invoke result. Never executes extension code
+        (executed=false; status=accepted_sandboxed).
+      properties:
+        extension_id:
+          type: string
+          format: uuid
+        action:
+          type: string
+          minLength: 1
+        surface:
+          type: string
+          minLength: 1
+        status:
+          type: string
+          const: accepted_sandboxed
+        executed:
+          type: boolean
+          const: false
+    InvokeExtensionRequest:
+      type: object
+      additionalProperties: false
+      required: [action, surface]
+      properties:
+        action:
+          type: string
+        surface:
+          type: string
+    ContextElevationDenialDetails:
+      type: object
+      additionalProperties: false
+      description: >
+        Known details shape for code TERMINAL_CONTEXT_ELEVATION_DENIED
+        (live /context/echo elevation deny). PHX-G208 per-code honesty;
+        other error codes may use different details keys.
+      required: [fields]
+      properties:
+        fields:
+          type: array
+          items:
+            type: string
+          description: Sorted denied elevation field names.
+    ErrorBody:
+      type: object
+      additionalProperties: false
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          description: >
+            Optional structured denial context (G202/G204/G218). Known elevation
+            shape is composed via anyOf $ref to ContextElevationDenialDetails;
+            residual object allows other keys.
+          anyOf:
+            - $ref: "#/components/schemas/ContextElevationDenialDetails"
+            - type: object
+              additionalProperties: true
+    ValidationErrorItem:
+      type: object
+      description: FastAPI/Pydantic request validation error item.
+      required: [loc, msg, type]
+      additionalProperties: true
+      properties:
+        loc:
+          type: array
+          items:
+            oneOf:
+              - type: string
+              - type: integer
+        msg:
+          type: string
+        type:
+          type: string
+    HTTPValidationError:
+      type: object
+      description: FastAPI request validation envelope (422 detail list).
+      additionalProperties: false
+      required: [detail]
+      properties:
+        detail:
+          type: array
+          items:
+            $ref: "#/components/schemas/ValidationErrorItem"
+    GatewayDetailError:
+      type: object
+      additionalProperties: false
+      required: [detail]
+      properties:
+        detail:
+          $ref: "#/components/schemas/ErrorBody"
+  responses:
+    KernelError:
+      description: FastAPI HTTPException detail envelope (PHX-G166)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/GatewayDetailError"

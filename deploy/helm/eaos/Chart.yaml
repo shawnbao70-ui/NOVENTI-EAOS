@@ -1,0 +1,12 @@
+apiVersion: v2
+name: eaos
+description: NOVENTI EAOS Phoenix Foundation single-replica Helm chart (PHX-G51)
+type: application
+version: 0.2.5
+appVersion: "0.2.5"
+keywords:
+  - eaos
+  - noventi
+  - gateway
+maintainers:
+  - name: NOVENTI

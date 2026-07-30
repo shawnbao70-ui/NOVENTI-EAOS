@@ -1,0 +1,617 @@
+baseline_name: EAOS Phoenix Foundation
+program: Project Phoenix
+version: "0.2.5"
+released_at: "2026-07-27"
+alembic_head: 0092_finance_realized_fx_gl_bridge_g372
+python_requires: ">=3.11"
+# Serial TRACK truth is authoritative in POST_CRM_VERTICAL_ROADMAP.md.
+# This manifest enumerates Foundation milestones plus selected release/governance
+# cuts through PHX-G525.
+milestone_inventory_note: foundation_plus_selected_release_cuts_through_g525
+
+milestones:
+  - id: PHX-K07
+    status: fully_accepted
+  - id: PHX-K08
+    status: fully_accepted
+  - id: PHX-K09
+    status: fully_accepted
+  - id: PHX-K10
+    status: fully_accepted
+  - id: PHX-P11
+    status: fully_accepted
+  - id: PHX-A12
+    status: fully_accepted
+  - id: PHX-T13
+    status: fully_accepted
+  - id: PHX-B14
+    status: fully_accepted
+  - id: PHX-E15
+    status: fully_accepted
+  - id: PHX-M16
+    status: technically_accepted
+    notes: technical_distribution; commercial_via_m17
+  - id: PHX-M17
+    status: fully_accepted
+    notes: foundation_commercial_policy_v1
+  - id: PHX-R17
+    status: fully_accepted
+    notes: prior_foundation_baseline_0_2_0
+  - id: PHX-G143
+    status: fully_accepted
+    notes: dual_track_governance
+  - id: PHX-G144
+    status: fully_accepted
+    notes: foundation_0_2_1_patch_train
+  - id: PHX-G145
+    status: fully_accepted
+    notes: webauthn_mfa_product_posture_thin
+  - id: PHX-G146
+    status: fully_accepted
+    notes: role_grant_product_posture_thin
+  - id: PHX-G147
+    status: fully_accepted
+    notes: oidc_login_product_surface
+  - id: PHX-G148
+    status: fully_accepted
+    notes: openapi_inventory_product_posture
+  - id: PHX-G149
+    status: fully_accepted
+    notes: eng_soft_queue_tip_hygiene
+  - id: PHX-G150
+    status: fully_accepted
+    notes: autonomous_execution_directive_v1_1
+  - id: PHX-G151
+    status: fully_accepted
+    notes: webauthn_ceremony_stub_503
+  - id: PHX-G152
+    status: fully_accepted
+    notes: ar_board_queue_and_manifest_hygiene
+  - id: PHX-G153
+    status: fully_accepted
+    notes: foundation_ops_compat_checklist_hygiene
+  - id: PHX-G154
+    status: fully_accepted
+    notes: webauthn_ceremony_stub_observability
+  - id: PHX-G155
+    status: fully_accepted
+    notes: t2_t3_evidence_readiness_board
+  - id: PHX-G156
+    status: fully_accepted
+    notes: role_grant_auto_write_stub_503
+  - id: PHX-G157
+    status: fully_accepted
+    notes: foundation_ops_checklist_hygiene_after_g156
+  - id: PHX-G158
+    status: fully_accepted
+    notes: autonomous_soft_queue_natural_pause
+  - id: PHX-G159
+    status: fully_accepted
+    notes: generation1_architecture_review_board_hold
+  - id: PHX-G160
+    status: fully_accepted
+    notes: webauthn_env_gated_challenge_bound_live_mint
+  - id: PHX-G161
+    status: fully_accepted
+    notes: role_grant_env_gated_live_mint
+  - id: PHX-G162
+    status: fully_accepted
+    notes: marketplace_payment_clearing_env_gated_internal_record
+  - id: PHX-G163
+    status: fully_accepted
+    notes: t2_t3_evidence_intake_live_capture
+  - id: PHX-G164
+    status: fully_accepted
+    notes: openapi_semantic_deepen_mount_vs_semantic
+  - id: PHX-G165
+    status: fully_accepted
+    notes: terminal_declared_package_surface_projection
+  - id: PHX-G166
+    status: fully_accepted
+    notes: openapi_semantic_remainder_deepen_t0188
+  - id: PHX-G167
+    status: fully_accepted
+    notes: demo_bootstrap_context_dev_only
+  - id: PHX-G168
+    status: fully_accepted
+    notes: demo_signed_extension_seed_hmac
+  - id: PHX-G169
+    status: fully_accepted
+    notes: signed_extension_host_productization
+  - id: PHX-G170
+    status: fully_accepted
+    notes: uuid_result_dialect_unification_dual_key
+  - id: PHX-G171
+    status: fully_accepted
+    notes: terminal_uuid_result_client_harden
+  - id: PHX-G172
+    status: fully_accepted
+    notes: marketplace_listing_host_acquire_allowlisted
+  - id: PHX-G173
+    status: fully_accepted
+    notes: marketplace_host_acquire_status_posture
+  - id: PHX-G174
+    status: fully_accepted
+    notes: openapi_auth_marketplace_platform_detail_align
+  - id: PHX-G175
+    status: fully_accepted
+    notes: terminal_host_acquire_status_surface
+  - id: PHX-G176
+    status: fully_accepted
+    notes: openapi_platform_status_code_honesty
+  - id: PHX-G177
+    status: fully_accepted
+    notes: openapi_auth_oidc_status_code_honesty
+  - id: PHX-G178
+    status: fully_accepted
+    notes: openapi_identity_org_status_code_honesty
+  - id: PHX-G179
+    status: fully_accepted
+    notes: openapi_permission_workflow_status_code_honesty
+  - id: PHX-G180
+    status: fully_accepted
+    notes: openapi_package_terminal_knowledge_status_code_honesty
+  - id: PHX-G181
+    status: fully_accepted
+    notes: openapi_ai_event_brain_marketplace_status_code_honesty
+  - id: PHX-G182
+    status: fully_accepted
+    notes: terminal_extensions_host_path_readiness
+  - id: PHX-G183
+    status: fully_accepted
+    notes: terminal_payment_clearing_status_surface
+  - id: PHX-G184
+    status: fully_accepted
+    notes: terminal_openapi_inventory_posture_deepen
+  - id: PHX-G185
+    status: fully_accepted
+    notes: openapi_auth_permission_product_posture_schema_parity
+  - id: PHX-G186
+    status: fully_accepted
+    notes: openapi_marketplace_status_body_field_parity
+  - id: PHX-G187
+    status: fully_accepted
+    notes: openapi_oidc_login_product_posture_schema_parity
+  - id: PHX-G188
+    status: fully_accepted
+    notes: openapi_jwt_status_body_field_parity
+  - id: PHX-G189
+    status: fully_accepted
+    notes: openapi_idp_status_body_field_parity
+  - id: PHX-G190
+    status: fully_accepted
+    notes: openapi_oidc_status_body_field_parity
+  - id: PHX-G191
+    status: fully_accepted
+    notes: openapi_brain_twin_ai_workflow_status_body_field_parity
+  - id: PHX-G192
+    status: fully_accepted
+    notes: openapi_identity_org_knowledge_status_body_field_parity
+  - id: PHX-G193
+    status: fully_accepted
+    notes: openapi_package_terminal_event_status_mount_parity
+  - id: PHX-G194
+    status: fully_accepted
+    notes: terminal_domain_foundation_status_surface
+  - id: PHX-G195
+    status: fully_accepted
+    notes: openapi_role_catalog_status_source_counts_field_parity
+  - id: PHX-G196
+    status: fully_accepted
+    notes: openapi_role_grant_auto_write_response_detail_parity
+  - id: PHX-G197
+    status: fully_accepted
+    notes: openapi_ops_gateway_detail_error_parity
+  - id: PHX-G198
+    status: fully_accepted
+    notes: openapi_terminal_extension_list_response_parity
+  - id: PHX-G199
+    status: fully_accepted
+    notes: openapi_terminal_extension_invoke_response_parity
+  - id: PHX-G200
+    status: fully_accepted
+    notes: openapi_success_response_catalog_closure_honesty
+  - id: PHX-G201
+    status: fully_accepted
+    notes: terminal_role_catalog_status_surface
+  - id: PHX-G202
+    status: fully_accepted
+    notes: openapi_errorbody_details_inventory_closed
+  - id: PHX-G203
+    status: fully_accepted
+    notes: terminal_openapi_inventory_status_surface_deepen
+  - id: PHX-G204
+    status: fully_accepted
+    notes: openapi_error_details_fields_shape_honest
+  - id: PHX-G205
+    status: fully_accepted
+    notes: terminal_openapi_inventory_fields_shape_status_deepen
+  - id: PHX-G206
+    status: fully_accepted
+    notes: openapi_single_enum_const_honest
+  - id: PHX-G207
+    status: fully_accepted
+    notes: terminal_openapi_inventory_enum_const_status_deepen
+  - id: PHX-G208
+    status: fully_accepted
+    notes: openapi_elevation_details_code_shape_honest
+  - id: PHX-G209
+    status: fully_accepted
+    notes: terminal_openapi_inventory_elevation_status_deepen
+  - id: PHX-G210
+    status: fully_accepted
+    notes: openapi_oidc_details_code_shapes_honest
+  - id: PHX-G211
+    status: fully_accepted
+    notes: terminal_openapi_inventory_oidc_details_status_deepen
+  - id: PHX-G212
+    status: fully_accepted
+    notes: openapi_host_acquire_details_code_shape_honest
+  - id: PHX-G213
+    status: fully_accepted
+    notes: terminal_openapi_inventory_host_acquire_status_deepen
+  - id: PHX-G214
+    status: fully_accepted
+    notes: openapi_oidc_mfa_enrollment_details_honest
+  - id: PHX-G215
+    status: fully_accepted
+    notes: terminal_openapi_inventory_oidc_mfa_enrollment_status_deepen
+  - id: PHX-G216
+    status: fully_accepted
+    notes: openapi_error_details_description_key_honest
+  - id: PHX-G217
+    status: fully_accepted
+    notes: terminal_openapi_inventory_error_details_description_key_status_deepen
+  - id: PHX-G218
+    status: fully_accepted
+    notes: openapi_named_details_ref_composition_honest
+  - id: PHX-G219
+    status: fully_accepted
+    notes: terminal_openapi_inventory_named_details_ref_status_deepen
+  - id: PHX-G220
+    status: fully_accepted
+    notes: openapi_cross_domain_elevation_details_ref_honest
+  - id: PHX-G221
+    status: fully_accepted
+    notes: terminal_openapi_inventory_cross_domain_elevation_ref_status_deepen
+  - id: PHX-G222
+    status: fully_accepted
+    notes: openapi_stub_detail_const_honest
+  - id: PHX-G223
+    status: fully_accepted
+    notes: terminal_openapi_inventory_stub_detail_const_status_deepen
+  - id: PHX-G224
+    status: fully_accepted
+    notes: openapi_named_success_envelopes_honest
+  - id: PHX-G225
+    status: fully_accepted
+    notes: terminal_openapi_inventory_named_success_envelopes_status_deepen
+  - id: PHX-G226
+    status: fully_accepted
+    notes: openapi_host_acquire_payload_named_honest
+  - id: PHX-G227
+    status: fully_accepted
+    notes: terminal_openapi_inventory_host_acquire_payload_status_deepen
+  - id: PHX-G228
+    status: fully_accepted
+    notes: openapi_nested_data_payload_named_honest
+  - id: PHX-G229
+    status: fully_accepted
+    notes: terminal_openapi_inventory_nested_data_payload_status_deepen
+  - id: PHX-G230
+    status: fully_accepted
+    notes: openapi_federation_matrix_payload_named_honest
+  - id: PHX-G231
+    status: fully_accepted
+    notes: terminal_openapi_inventory_federation_matrix_status_deepen
+  - id: PHX-G232
+    status: fully_accepted
+    notes: openapi_nested_anon_ge2_payload_named_honest
+  - id: PHX-G233
+    status: fully_accepted
+    notes: terminal_openapi_inventory_nested_anon_ge2_status_deepen
+  - id: PHX-G234
+    status: fully_accepted
+    notes: openapi_count_meta_oidc_providers_payload_named_honest
+  - id: PHX-G235
+    status: fully_accepted
+    notes: terminal_openapi_inventory_count_meta_status_deepen
+  - id: PHX-G236
+    status: fully_accepted
+    notes: openapi_opaque_auth_array_items_named_honest
+  - id: PHX-G237
+    status: fully_accepted
+    notes: terminal_openapi_inventory_opaque_auth_array_items_status_deepen
+  - id: PHX-G238
+    status: fully_accepted
+    notes: openapi_discovery_registry_write_posture_named_honest
+  - id: PHX-G239
+    status: fully_accepted
+    notes: terminal_openapi_inventory_discovery_registry_write_status_deepen
+  - id: PHX-G240
+    status: fully_accepted
+    notes: openapi_webauthn_public_key_creation_options_named_honest
+  - id: PHX-G241
+    status: fully_accepted
+    notes: terminal_openapi_inventory_webauthn_pk_options_status_deepen
+  - id: PHX-G242
+    status: fully_accepted
+    notes: openapi_webauthn_register_verify_response_closed
+  - id: PHX-G243
+    status: fully_accepted
+    notes: terminal_openapi_inventory_webauthn_verify_response_status_deepen
+  - id: PHX-G244
+    status: fully_accepted
+    notes: openapi_oidc_amr_acr_details_closed
+  - id: PHX-G245
+    status: fully_accepted
+    notes: terminal_openapi_inventory_oidc_amr_acr_closed_status_deepen
+  - id: PHX-G246
+    status: fully_accepted
+    notes: openapi_idp_jwks_document_named_honest
+  - id: PHX-G247
+    status: fully_accepted
+    notes: terminal_openapi_inventory_idp_jwks_document_status_deepen
+  - id: PHX-G248
+    status: fully_accepted
+    notes: openapi_webauthn_verify_denial_honest
+  - id: PHX-G249
+    status: fully_accepted
+    notes: terminal_openapi_inventory_webauthn_verify_denial_status_deepen
+  - id: PHX-G250
+    status: fully_accepted
+    notes: openapi_role_grant_no_match_denial_honest
+  - id: PHX-G251
+    status: fully_accepted
+    notes: terminal_openapi_inventory_role_grant_no_match_status_deepen
+  - id: PHX-G252
+    status: fully_accepted
+    notes: openapi_payment_clearing_stub_error_envelope_honest
+  - id: PHX-G253
+    status: fully_accepted
+    notes: terminal_openapi_inventory_payment_clearing_stub_error_status_deepen
+  - id: PHX-G254
+    status: fully_accepted
+    notes: openapi_payment_clearing_success_schemas_closed
+  - id: PHX-G255
+    status: fully_accepted
+    notes: terminal_openapi_inventory_payment_clearing_success_status_deepen
+  - id: PHX-G256
+    status: fully_accepted
+    notes: openapi_uuid_boolean_ok_result_schemas_closed
+  - id: PHX-G257
+    status: fully_accepted
+    notes: terminal_openapi_inventory_uuid_result_closed_status_deepen
+  - id: PHX-G258
+    status: fully_accepted
+    notes: openapi_marketplace_write_listing_schemas_closed
+  - id: PHX-G259
+    status: fully_accepted
+    notes: terminal_openapi_inventory_marketplace_write_listing_status_deepen
+  - id: PHX-G260
+    status: fully_accepted
+    notes: openapi_organization_entity_schemas_closed
+  - id: PHX-G261
+    status: fully_accepted
+    notes: terminal_openapi_inventory_organization_entity_status_deepen
+  - id: PHX-G262
+    status: fully_accepted
+    notes: openapi_package_manifest_schemas_closed
+  - id: PHX-G263
+    status: fully_accepted
+    notes: terminal_openapi_inventory_package_manifest_status_deepen
+  - id: PHX-G264
+    status: fully_accepted
+    notes: openapi_terminal_session_schemas_closed
+  - id: PHX-G265
+    status: fully_accepted
+    notes: terminal_openapi_inventory_terminal_session_status_deepen
+  - id: PHX-G266
+    status: fully_accepted
+    notes: openapi_ai_agent_memory_schemas_closed
+  - id: PHX-G267
+    status: fully_accepted
+    notes: terminal_openapi_inventory_ai_agent_memory_status_deepen
+  - id: PHX-G268
+    status: fully_accepted
+    notes: openapi_event_envelope_dead_letter_schemas_closed
+  - id: PHX-G269
+    status: fully_accepted
+    notes: terminal_openapi_inventory_event_envelope_status_deepen
+  - id: PHX-G270
+    status: fully_accepted
+    notes: openapi_knowledge_entity_provenance_schemas_closed
+  - id: PHX-G271
+    status: fully_accepted
+    notes: terminal_openapi_inventory_knowledge_entity_status_deepen
+  - id: PHX-G272
+    status: fully_accepted
+    notes: openapi_brain_twin_schemas_closed
+  - id: PHX-G273
+    status: fully_accepted
+    notes: terminal_openapi_inventory_brain_twin_status_deepen
+  - id: PHX-G274
+    status: fully_accepted
+    notes: ops_milestone_const_parity_contract_softener
+  - id: PHX-G275
+    status: fully_accepted
+    notes: terminal_openapi_inventory_ops_milestone_parity_status_deepen
+  - id: PHX-G276
+    status: fully_accepted
+    notes: foundation_contract_softener_wave2
+  - id: PHX-G277
+    status: fully_accepted
+    notes: terminal_openapi_inventory_contract_softener_wave2_status_deepen
+  - id: PHX-G278
+    status: fully_accepted
+    notes: contract_softener_wave3_tip_parity_guard
+  - id: PHX-G279
+    status: fully_accepted
+    notes: terminal_openapi_inventory_softener_wave3_status_deepen
+  - id: PHX-G280
+    status: fully_accepted
+    notes: foundation_contract_softener_wave4
+  - id: PHX-G281
+    status: fully_accepted
+    notes: terminal_openapi_inventory_softener_wave4_status_deepen
+  - id: PHX-G282
+    status: fully_accepted
+    notes: foundation_contract_softener_wave5
+  - id: PHX-G283
+    status: fully_accepted
+    notes: terminal_openapi_inventory_softener_wave5_status_deepen
+  - id: PHX-G284
+    status: fully_accepted
+    notes: foundation_contract_softener_wave6
+  - id: PHX-G285
+    status: fully_accepted
+    notes: terminal_openapi_inventory_softener_wave6_status_deepen
+  - id: PHX-G286
+    status: fully_accepted
+    notes: openapi_errorbody_outer_closed
+  - id: PHX-G287
+    status: fully_accepted
+    notes: terminal_openapi_errorbody_outer_status_deepen
+  - id: PHX-G288
+    status: fully_accepted
+    notes: openapi_outer_close_regression_guard
+  - id: PHX-G289
+    status: fully_accepted
+    notes: terminal_openapi_outer_close_guard_status_deepen
+  - id: PHX-G290
+    status: fully_accepted
+    notes: legacy_knowledge_extract_crm_sales
+  - id: PHX-G291
+    status: fully_accepted
+    notes: legacy_knowledge_extract_finance
+  - id: PHX-G292
+    status: fully_accepted
+    notes: legacy_knowledge_extract_delivery
+  - id: PHX-G293
+    status: fully_accepted
+    notes: sample_knowledge_pack
+  - id: PHX-G404
+    status: fully_accepted
+    notes: foundation_0_2_3_release_cut
+  - id: PHX-G405
+    status: fully_accepted
+    notes: baseline_v2_0_readiness_checklist
+  - id: PHX-G406
+    status: fully_accepted
+    notes: remediation_p0_tip_helper
+  - id: PHX-G407
+    status: fully_accepted
+    notes: remediation_p0_docker_noventi
+  - id: PHX-G408
+    status: fully_accepted
+    notes: remediation_p0_contract_shards
+  - id: PHX-G409
+    status: fully_accepted
+    notes: remediation_p1_version_parity
+  - id: PHX-G410
+    status: fully_accepted
+    notes: remediation_p1_ci_and_lock
+  - id: PHX-G411
+    status: fully_accepted
+    notes: remediation_p1_governance_truth_layout
+  - id: PHX-G412
+    status: fully_accepted
+    notes: remediation_p2_production_auth
+  - id: PHX-G413
+    status: fully_accepted
+    notes: remediation_p2_k8s_harden_thin
+  - id: PHX-G414
+    status: fully_accepted
+    notes: remediation_p2_pg_integration_subset
+  - id: PHX-G415
+    status: fully_accepted
+    notes: remediation_rc_evidence_pack
+  - id: PHX-G461
+    status: fully_accepted
+    notes: foundation_0_2_4_release_cut
+  - id: PHX-G463
+    status: fully_accepted
+    notes: batches_e_l_final_stop
+  - id: PHX-G469
+    status: fully_accepted
+    notes: batch_m_production_no_go_evidence_decision
+  - id: PHX-G509
+    status: fully_accepted
+    notes: foundation_0_2_5_release_cut
+  - id: PHX-G511
+    status: fully_accepted
+    notes: batches_m_t_final_stop
+  - id: PHX-G512
+    status: fully_accepted
+    notes: crm_customer_contact_readonly_ui_and_list_queries
+  - id: PHX-G513
+    status: fully_accepted
+    notes: crm_customer_contact_managed_terminal_ui
+  - id: PHX-G514
+    status: fully_accepted
+    notes: crm_opportunity_managed_ui_and_list_query
+  - id: PHX-G515
+    status: fully_accepted
+    notes: crm_requirement_managed_ui_and_list_query
+  - id: PHX-G516
+    status: fully_accepted
+    notes: crm_quote_header_managed_ui_and_list_query
+  - id: PHX-G517
+    status: fully_accepted
+    notes: crm_quote_lines_managed_ui
+  - id: PHX-G518
+    status: fully_accepted
+    notes: crm_quote_convert_ui
+  - id: PHX-G519
+    status: fully_accepted
+    notes: crm_sales_order_readonly_ui_and_list_query
+  - id: PHX-G520
+    status: fully_accepted
+    notes: crm_sales_order_confirm_ui
+  - id: PHX-G521
+    status: fully_accepted
+    notes: crm_customer_360_readonly_ui
+  - id: PHX-G522
+    status: fully_accepted
+    notes: crm_quote_issue_ui
+  - id: PHX-G523
+    status: fully_accepted
+    notes: crm_delivery_order_read_release_ui
+  - id: PHX-G524
+    status: fully_accepted
+    notes: crm_ar_invoice_read_issue_ui
+  - id: PHX-G525
+    status: fully_accepted
+    notes: crm_return_authorization_read_only_ui
+
+openapi_contracts:
+  - docs/api/identity.openapi.yaml
+  - docs/api/organization.openapi.yaml
+  - docs/api/permission.openapi.yaml
+  - docs/api/workflow.openapi.yaml
+  - docs/api/knowledge.openapi.yaml
+  - docs/api/event.openapi.yaml
+  - docs/api/ai.openapi.yaml
+  - docs/api/terminal.openapi.yaml
+  - docs/api/package.openapi.yaml
+  - docs/api/brain.openapi.yaml
+  - docs/api/marketplace.openapi.yaml
+  - docs/api/auth.openapi.yaml
+  - docs/api/platform.openapi.yaml
+  - docs/api/ops.openapi.yaml
+
+sdk:
+  package: eaos_sdk
+  path: sdk/eaos_sdk
+
+api_adapters:
+  path: api/adapters
+
+explicit_non_goals:
+  - marketplace_external_psp_capture_and_external_arbitration
+  - multi_region_production_saas
+  - public_package_registry
+
+compatibility_policy: docs/release/COMPATIBILITY.md
+operations_runbook: docs/release/OPERATIONS_RUNBOOK.md
+release_checklist: docs/release/RELEASE_CHECKLIST.md

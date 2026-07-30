@@ -1,0 +1,2487 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>NOVENTI Smart Terminal</title>
+    <link rel="stylesheet" href="/terminal/styles.css" />
+  </head>
+  <body>
+    <div class="atmosphere" aria-hidden="true"></div>
+    <main class="shell">
+      <header class="brand-block">
+        <p class="brand">NOVENTI</p>
+        <h1>Smart Terminal</h1>
+        <p class="lede">
+          完整受治理操作壳 — Operator、Product、Ops、Approval、Admin 与 AI Collaboration；真相仍归 Kernel。
+        </p>
+      </header>
+
+      <nav class="surface-nav" aria-label="Terminal surfaces">
+        <button type="button" class="surface-tab is-active" data-surface="operator">
+          Operator
+        </button>
+        <button type="button" class="surface-tab" data-surface="product">Product</button>
+        <button type="button" class="surface-tab" data-surface="crm">CRM</button>
+        <button type="button" class="surface-tab" data-surface="ops">Ops</button>
+        <button type="button" class="surface-tab" data-surface="approval">Approval</button>
+        <button type="button" class="surface-tab" data-surface="admin">Admin</button>
+        <button type="button" class="surface-tab" data-surface="ai">AI Collaboration</button>
+        <button type="button" class="surface-tab" data-surface="extensions">Extensions</button>
+      </nav>
+
+      <section class="context-strip" aria-label="Trusted context">
+        <label>
+          Subject
+          <input id="subjectId" name="subject_id" autocomplete="off" spellcheck="false" />
+        </label>
+        <label>
+          Tenant
+          <input id="tenantId" name="tenant_id" autocomplete="off" spellcheck="false" />
+        </label>
+        <label>
+          Correlation
+          <input id="correlationId" name="correlation_id" autocomplete="off" spellcheck="false" />
+        </label>
+        <div class="session-indicator" id="sessionIndicator" aria-live="polite">
+          Session: <span data-field="session">—</span>
+        </div>
+        <section
+          class="oidc-login-product"
+          id="oidcLoginProductPanel"
+          aria-label="OIDC Login Product"
+        >
+          <h3 class="panel-title">OIDC Login Product</h3>
+          <div class="button-row" id="oidcLoginProductRow" aria-live="polite">
+            <span class="hint" id="oidcLoginProductPosture"
+              >OIDC Login Product: authorization_code_enabled=false (fail-closed when
+              unconfigured; Auth Code G40/G61/G132)</span
+            >
+          </div>
+          <div class="button-row">
+            <a class="text-link" id="btnOidcLogin" href="/v1/auth/oidc/login">OIDC Login</a>
+            <button type="button" id="btnOidcRefresh">OIDC Refresh</button>
+            <button type="button" id="btnOidcLogout">OIDC Logout</button>
+            <button type="button" id="btnClearBearer">Clear Bearer</button>
+          </div>
+          <div class="button-row" id="oidcProviderLinks" hidden></div>
+        </section>
+        <div class="button-row" id="oidcMfaEnrollmentRow" hidden>
+          <a class="text-link" id="btnOidcMfaEnrollment" href="/v1/auth/oidc/mfa-enrollment"
+            >MFA Enrollment</a
+          >
+        </div>
+        <div class="button-row" id="webauthnProductRow" aria-live="polite">
+          <span class="hint" id="webauthnProductPosture"
+            >MFA / WebAuthn product: webauthn_registration_enabled=false (default 503;
+            env EAOS_WEBAUTHN_REGISTRATION_ENABLED + RP for live mint G160; attestation
+            crypto still deferred; IdP enrollment remains available)</span
+          >
+          <a
+            class="text-link"
+            id="btnWebauthnMfaEnrollment"
+            href="/v1/auth/oidc/mfa-enrollment"
+            hidden
+            >MFA Enrollment</a
+          >
+        </div>
+        <div class="button-row" id="roleGrantProductRow" aria-live="polite">
+          <span class="hint" id="roleGrantProductPosture"
+            >Role→grant product: auto_grant_from_role_enabled=false (default 503; env
+            EAOS_ROLE_GRANT_AUTO_WRITE_ENABLED for live mint G161; Cap≠grant; manual
+            G128/G129; evaluate-only G83)</span
+          >
+        </div>
+        <div class="button-row" id="roleCatalogStatusRow" aria-live="polite">
+          <button type="button" id="btnRoleCatalogStatusRefresh">
+            Refresh role catalog status (G201)
+          </button>
+          <span class="hint" id="roleCatalogStatusPosture"
+            >Role catalog: store=—; roles=—; sources=— (Cap≠grant; G195 source_counts)</span
+          >
+        </div>
+        <div class="button-row" id="openapiInventoryProductRow" aria-live="polite">
+          <button type="button" id="btnOpenapiInventoryRefresh">
+            Refresh OpenAPI inventory (G184…G289)
+          </button>
+          <span class="hint" id="openapiInventoryProductPosture"
+            >OpenAPI Inventory: contracts=— (mount parity complete; details…OIDC
+            G210; host-acquire G212; full parity still deferred)</span
+          >
+        </div>
+        <div class="button-row" id="sampleKnowledgePackProductRow" aria-live="polite">
+          <button type="button" id="btnSampleKnowledgePackRefresh">
+            Refresh sample knowledge pack (G293)
+          </button>
+          <a
+            class="hint"
+            id="sampleKnowledgePackLink"
+            href="/v1/demo/sample-pack/INDEX.md"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Open INDEX</a
+          >
+          <span class="hint" id="sampleKnowledgePackProductPosture"
+            >Sample pack: milestone=— · path=— · crud=false · Brain/Twin fail-closed</span
+          >
+        </div>
+        <p class="hint" id="authHint">
+          优先使用 OIDC Bearer；否则填写开发态受信头。请求体禁止 tenant_id / subject_id /
+          platform_scope / session_id。
+        </p>
+      </section>
+
+      <ol class="lifecycle" id="lifecycleSteps">
+        <li data-step="session" class="is-active">Session</li>
+        <li data-step="intent">Intent</li>
+        <li data-step="preview">Preview</li>
+        <li data-step="approval">Approval</li>
+        <li data-step="commit">Commit</li>
+        <li data-step="receipt">Receipt</li>
+      </ol>
+
+      <section
+        class="surface-panel is-active"
+        data-surface-panel="operator"
+        aria-label="Operator workbench"
+      >
+        <div class="stage">
+          <h2>Session</h2>
+          <div class="button-row">
+            <button type="button" id="btnOpenSession">Open session</button>
+            <button type="button" id="btnRefreshSession" disabled>Refresh session</button>
+            <button type="button" id="btnCloseSession" disabled>Close session</button>
+          </div>
+        </div>
+        <div class="stage">
+          <h2>Compose intent</h2>
+          <textarea id="intentText" rows="3" placeholder="Describe the governed action"></textarea>
+          <div class="button-row">
+            <button type="button" id="btnComposeIntent" disabled>Compose intent</button>
+            <button type="button" id="btnRefreshIntent" disabled>Refresh intent</button>
+          </div>
+        </div>
+        <div class="stage">
+          <h2>Build preview</h2>
+          <div class="field-grid">
+            <label>Action <input id="action" value="report.generate" /></label>
+            <label>Resource <input id="resourceRef" value="report:monthly" /></label>
+            <label>Plan <input id="planVersion" value="v1" /></label>
+            <label>Scope <input id="scope" value="tenant" /></label>
+          </div>
+          <textarea id="impactSummary" rows="2">Generate read-only monthly report</textarea>
+          <label class="check">
+            <input type="checkbox" id="highImpact" />
+            High impact (requires Workflow approval)
+          </label>
+          <div class="button-row">
+            <button type="button" id="btnBuildPreview" disabled>Build preview</button>
+            <button type="button" id="btnRefreshPreview" disabled>Refresh preview</button>
+          </div>
+        </div>
+        <div class="stage">
+          <h2>Commit</h2>
+          <button type="button" id="btnCommit" disabled>Commit preview</button>
+        </div>
+        <div class="stage">
+          <h2>Receipt / provenance</h2>
+          <pre id="receiptView" class="panel-pre">No receipt yet.</pre>
+        </div>
+      </section>
+
+      <section
+        class="surface-panel"
+        data-surface-panel="crm"
+        aria-label="CRM Customer and Contact"
+        hidden
+      >
+        <div class="stage crm-hero">
+          <div>
+            <p class="eyebrow">CRM · Managed</p>
+            <h2>Customers &amp; Contacts</h2>
+            <p class="stage-note">
+              Tenant-scoped business directory. Server-side Permission remains authoritative;
+              create, update, and archive controls appear only from effective grants. Import,
+              merge, hard delete, and automatic writes remain unavailable.
+            </p>
+          </div>
+          <div class="crm-hero-actions">
+            <span class="crm-permission-state" id="crmPermissionState" data-state="loading"
+              >Write controls locked</span
+            >
+            <button type="button" id="btnCrmNewCustomer" hidden>New customer</button>
+            <button type="button" id="btnCrmRefreshCustomers">Refresh customers</button>
+          </div>
+        </div>
+
+        <div class="crm-workspace">
+          <section class="stage crm-column" aria-labelledby="crmCustomersHeading">
+            <div class="crm-section-heading">
+              <div>
+                <p class="eyebrow">Directory</p>
+                <h2 id="crmCustomersHeading">Customers</h2>
+              </div>
+              <span class="crm-count" id="crmCustomerCount">—</span>
+            </div>
+            <p class="crm-state" id="crmCustomerState" data-state="idle" aria-live="polite">
+              Open CRM to load governed customers.
+            </p>
+            <div
+              id="crmCustomerList"
+              class="choice-list crm-list"
+              role="listbox"
+              aria-label="CRM customers"
+            ></div>
+            <button type="button" id="btnCrmMoreCustomers" disabled>Load more customers</button>
+          </section>
+
+          <section class="stage crm-column" aria-labelledby="crmCustomerDetailHeading">
+            <p class="eyebrow">Customer record</p>
+            <h2 id="crmCustomerDetailHeading">Select a customer</h2>
+            <dl id="crmCustomerDetail" class="detail-list crm-detail">
+              <div><dt>Code</dt><dd data-field="code">—</dd></div>
+              <div><dt>Name</dt><dd data-field="display_name">—</dd></div>
+              <div><dt>Status</dt><dd data-field="status">—</dd></div>
+              <div><dt>Commercial hold</dt><dd data-field="commercial_hold">—</dd></div>
+              <div><dt>Owner</dt><dd data-field="owner_subject_id">—</dd></div>
+              <div><dt>Updated</dt><dd data-field="updated_at">—</dd></div>
+            </dl>
+            <div class="button-row crm-write-controls" id="crmCustomerWriteControls" hidden>
+              <button type="button" id="btnCrmEditCustomer">Edit customer</button>
+              <button type="button" id="btnCrmArchiveCustomer" class="danger-button">
+                Archive customer
+              </button>
+              <button type="button" id="btnCrmNewContact">New contact</button>
+            </div>
+          </section>
+        </div>
+
+        <section class="stage" aria-labelledby="crmCustomer360Heading">
+          <div class="crm-section-heading">
+            <div>
+              <p class="eyebrow">Selected customer</p>
+              <h2 id="crmCustomer360Heading">Customer 360</h2>
+            </div>
+            <button type="button" id="btnCrmRefreshCustomer360" disabled>
+              Refresh 360
+            </button>
+          </div>
+          <p class="stage-note">
+            Read-only commercial composition from the governed Customer 360 projection.
+            Commercial Hold write, Quote Issue, Delivery, and Invoice actions remain unavailable.
+          </p>
+          <p class="crm-state" id="crmCustomer360State" data-state="idle" aria-live="polite">
+            Select a customer to load Customer 360.
+          </p>
+          <dl id="crmCustomer360Detail" class="detail-list crm-detail">
+            <div><dt>Code</dt><dd data-field="customer_code">—</dd></div>
+            <div><dt>Name</dt><dd data-field="display_name">—</dd></div>
+            <div><dt>Commercial hold</dt><dd data-field="commercial_hold">—</dd></div>
+            <div><dt>Opportunities</dt><dd data-field="opportunities_count">—</dd></div>
+            <div><dt>Open sales orders</dt><dd data-field="open_sales_orders_count">—</dd></div>
+            <div>
+              <dt>Open delivery orders</dt>
+              <dd data-field="open_delivery_orders_count">—</dd>
+            </div>
+          </dl>
+          <div class="crm-workspace">
+            <section class="stage crm-column" aria-labelledby="crmCustomer360InvoiceHeading">
+              <div class="crm-section-heading">
+                <div>
+                  <p class="eyebrow">Traces</p>
+                  <h2 id="crmCustomer360InvoiceHeading">Invoices</h2>
+                </div>
+                <span class="crm-count" id="crmCustomer360InvoiceCount">—</span>
+              </div>
+              <div
+                id="crmCustomer360InvoiceList"
+                class="choice-list crm-list"
+                role="list"
+                aria-label="Customer 360 invoice traces"
+              ></div>
+            </section>
+            <section class="stage crm-column" aria-labelledby="crmCustomer360ReceiptHeading">
+              <div class="crm-section-heading">
+                <div>
+                  <p class="eyebrow">Traces</p>
+                  <h2 id="crmCustomer360ReceiptHeading">Applied receipts</h2>
+                </div>
+                <span class="crm-count" id="crmCustomer360ReceiptCount">—</span>
+              </div>
+              <div
+                id="crmCustomer360ReceiptList"
+                class="choice-list crm-list"
+                role="list"
+                aria-label="Customer 360 applied receipt traces"
+              ></div>
+            </section>
+            <section class="stage crm-column" aria-labelledby="crmCustomer360CreditHeading">
+              <div class="crm-section-heading">
+                <div>
+                  <p class="eyebrow">Traces</p>
+                  <h2 id="crmCustomer360CreditHeading">Credit notes</h2>
+                </div>
+                <span class="crm-count" id="crmCustomer360CreditCount">—</span>
+              </div>
+              <div
+                id="crmCustomer360CreditList"
+                class="choice-list crm-list"
+                role="list"
+                aria-label="Customer 360 credit note traces"
+              ></div>
+            </section>
+          </div>
+        </section>
+
+        <div class="crm-workspace">
+          <section class="stage crm-column" aria-labelledby="crmContactsHeading">
+            <div class="crm-section-heading">
+              <div>
+                <p class="eyebrow">Selected customer</p>
+                <h2 id="crmContactsHeading">Contacts</h2>
+              </div>
+              <span class="crm-count" id="crmContactCount">—</span>
+            </div>
+            <p class="crm-state" id="crmContactState" data-state="idle" aria-live="polite">
+              Select a customer to load contacts.
+            </p>
+            <div
+              id="crmContactList"
+              class="choice-list crm-list"
+              role="listbox"
+              aria-label="CRM contacts"
+            ></div>
+            <button type="button" id="btnCrmMoreContacts" disabled>Load more contacts</button>
+          </section>
+
+          <section class="stage crm-column" aria-labelledby="crmContactDetailHeading">
+            <p class="eyebrow">Contact record</p>
+            <h2 id="crmContactDetailHeading">Select a contact</h2>
+            <dl id="crmContactDetail" class="detail-list crm-detail">
+              <div><dt>Name</dt><dd data-field="display_name">—</dd></div>
+              <div><dt>Title</dt><dd data-field="title">—</dd></div>
+              <div><dt>Email</dt><dd data-field="email">—</dd></div>
+              <div><dt>Phone</dt><dd data-field="phone">—</dd></div>
+              <div><dt>Status</dt><dd data-field="status">—</dd></div>
+              <div><dt>Updated</dt><dd data-field="updated_at">—</dd></div>
+            </dl>
+            <div class="button-row crm-write-controls" id="crmContactWriteControls" hidden>
+              <button type="button" id="btnCrmEditContact">Edit contact</button>
+              <button type="button" id="btnCrmArchiveContact" class="danger-button">
+                Archive contact
+              </button>
+            </div>
+          </section>
+        </div>
+
+        <div class="stage crm-hero crm-opportunity-hero">
+          <div>
+            <p class="eyebrow">CRM · Commercial chain</p>
+            <h2>Opportunities</h2>
+            <p class="stage-note">
+              Active tenant opportunities. Customer association and every write remain
+              server-governed.
+            </p>
+          </div>
+          <div class="crm-hero-actions">
+            <button type="button" id="btnCrmNewOpportunity" hidden>New opportunity</button>
+            <button type="button" id="btnCrmRefreshOpportunities">
+              Refresh opportunities
+            </button>
+          </div>
+        </div>
+
+        <div class="crm-workspace">
+          <section class="stage crm-column" aria-labelledby="crmOpportunitiesHeading">
+            <div class="crm-section-heading">
+              <div>
+                <p class="eyebrow">Pipeline</p>
+                <h2 id="crmOpportunitiesHeading">Opportunities</h2>
+              </div>
+              <span class="crm-count" id="crmOpportunityCount">—</span>
+            </div>
+            <p class="crm-state" id="crmOpportunityState" data-state="idle" aria-live="polite">
+              Open CRM to load governed opportunities.
+            </p>
+            <div
+              id="crmOpportunityList"
+              class="choice-list crm-list"
+              role="listbox"
+              aria-label="CRM opportunities"
+            ></div>
+            <button type="button" id="btnCrmMoreOpportunities" disabled>
+              Load more opportunities
+            </button>
+          </section>
+
+          <section class="stage crm-column" aria-labelledby="crmOpportunityDetailHeading">
+            <p class="eyebrow">Opportunity record</p>
+            <h2 id="crmOpportunityDetailHeading">Select an opportunity</h2>
+            <dl id="crmOpportunityDetail" class="detail-list crm-detail">
+              <div><dt>Code</dt><dd data-field="code">—</dd></div>
+              <div><dt>Title</dt><dd data-field="title">—</dd></div>
+              <div><dt>Customer</dt><dd data-field="customer_id">—</dd></div>
+              <div><dt>Status</dt><dd data-field="status">—</dd></div>
+              <div><dt>Owner</dt><dd data-field="owner_subject_id">—</dd></div>
+              <div><dt>Updated</dt><dd data-field="updated_at">—</dd></div>
+            </dl>
+            <div class="button-row crm-write-controls" id="crmOpportunityWriteControls" hidden>
+              <button type="button" id="btnCrmEditOpportunity">Edit opportunity</button>
+              <button type="button" id="btnCrmArchiveOpportunity" class="danger-button">
+                Archive opportunity
+              </button>
+            </div>
+          </section>
+        </div>
+
+        <section class="stage crm-editor" id="crmOpportunityEditor" hidden>
+          <div class="crm-section-heading">
+            <div>
+              <p class="eyebrow">Governed commercial write</p>
+              <h2 id="crmOpportunityEditorHeading">Opportunity</h2>
+            </div>
+            <button type="button" class="secondary-button" id="btnCrmCancelOpportunity">
+              Cancel
+            </button>
+          </div>
+          <form id="crmOpportunityForm">
+            <input type="hidden" id="crmOpportunityMode" value="create" />
+            <div class="field-grid">
+              <label>
+                Customer
+                <select id="crmOpportunityCustomer" required></select>
+              </label>
+              <label>
+                Title
+                <input id="crmOpportunityTitle" maxlength="255" required autocomplete="off" />
+              </label>
+              <label>
+                Owner subject ID (optional)
+                <input id="crmOpportunityOwner" autocomplete="off" />
+              </label>
+            </div>
+            <p class="crm-state" id="crmOpportunityFormState" data-state="idle" aria-live="polite">
+              Customer choices come only from the governed Customer collection.
+            </p>
+            <button type="submit" id="btnCrmSubmitOpportunity">Save opportunity</button>
+          </form>
+        </section>
+
+        <div class="stage crm-hero">
+          <div>
+            <p class="eyebrow">CRM · Discovery</p>
+            <h2>Requirements</h2>
+            <p class="stage-note">
+              Active requirements associated with governed Opportunities.
+            </p>
+          </div>
+          <div class="crm-hero-actions">
+            <button type="button" id="btnCrmNewRequirement" hidden>New requirement</button>
+            <button type="button" id="btnCrmRefreshRequirements">
+              Refresh requirements
+            </button>
+          </div>
+        </div>
+
+        <div class="crm-workspace">
+          <section class="stage crm-column" aria-labelledby="crmRequirementsHeading">
+            <div class="crm-section-heading">
+              <div>
+                <p class="eyebrow">Discovery</p>
+                <h2 id="crmRequirementsHeading">Requirements</h2>
+              </div>
+              <span class="crm-count" id="crmRequirementCount">—</span>
+            </div>
+            <p class="crm-state" id="crmRequirementState" data-state="idle" aria-live="polite">
+              Open CRM to load governed requirements.
+            </p>
+            <div
+              id="crmRequirementList"
+              class="choice-list crm-list"
+              role="listbox"
+              aria-label="CRM requirements"
+            ></div>
+            <button type="button" id="btnCrmMoreRequirements" disabled>
+              Load more requirements
+            </button>
+          </section>
+
+          <section class="stage crm-column" aria-labelledby="crmRequirementDetailHeading">
+            <p class="eyebrow">Requirement record</p>
+            <h2 id="crmRequirementDetailHeading">Select a requirement</h2>
+            <dl id="crmRequirementDetail" class="detail-list crm-detail">
+              <div><dt>Code</dt><dd data-field="code">—</dd></div>
+              <div><dt>Title</dt><dd data-field="title">—</dd></div>
+              <div><dt>Opportunity</dt><dd data-field="opportunity_id">—</dd></div>
+              <div><dt>Description</dt><dd data-field="description">—</dd></div>
+              <div><dt>Status</dt><dd data-field="status">—</dd></div>
+              <div><dt>Updated</dt><dd data-field="updated_at">—</dd></div>
+            </dl>
+            <div class="button-row crm-write-controls" id="crmRequirementWriteControls" hidden>
+              <button type="button" id="btnCrmEditRequirement">Edit requirement</button>
+              <button type="button" id="btnCrmArchiveRequirement" class="danger-button">
+                Archive requirement
+              </button>
+            </div>
+          </section>
+        </div>
+
+        <section class="stage crm-editor" id="crmRequirementEditor" hidden>
+          <div class="crm-section-heading">
+            <div>
+              <p class="eyebrow">Governed discovery write</p>
+              <h2 id="crmRequirementEditorHeading">Requirement</h2>
+            </div>
+            <button type="button" class="secondary-button" id="btnCrmCancelRequirement">
+              Cancel
+            </button>
+          </div>
+          <form id="crmRequirementForm">
+            <input type="hidden" id="crmRequirementMode" value="create" />
+            <div class="field-grid">
+              <label>
+                Opportunity
+                <select id="crmRequirementOpportunity" required></select>
+              </label>
+              <label>
+                Title
+                <input id="crmRequirementTitle" maxlength="255" required autocomplete="off" />
+              </label>
+              <label>
+                Description (optional)
+                <textarea id="crmRequirementDescription" maxlength="4000" rows="4"></textarea>
+              </label>
+            </div>
+            <p class="crm-state" id="crmRequirementFormState" data-state="idle" aria-live="polite">
+              Opportunity choices come only from the governed collection.
+            </p>
+            <button type="submit" id="btnCrmSubmitRequirement">Save requirement</button>
+          </form>
+        </section>
+
+        <div class="stage crm-hero">
+          <div>
+            <p class="eyebrow">CRM · Commercial proposal</p>
+            <h2>Quote Headers</h2>
+            <p class="stage-note">
+              Draft and issued Quote headers. Issue is available for draft Quotes when permitted.
+              Delivery and Invoice remain unavailable.
+            </p>
+          </div>
+          <div class="crm-hero-actions">
+            <button type="button" id="btnCrmNewQuote" hidden>New quote</button>
+            <button type="button" id="btnCrmRefreshQuotes">Refresh quotes</button>
+          </div>
+        </div>
+
+        <div class="crm-workspace">
+          <section class="stage crm-column" aria-labelledby="crmQuotesHeading">
+            <div class="crm-section-heading">
+              <div>
+                <p class="eyebrow">Proposal headers</p>
+                <h2 id="crmQuotesHeading">Quotes</h2>
+              </div>
+              <span class="crm-count" id="crmQuoteCount">—</span>
+            </div>
+            <p class="crm-state" id="crmQuoteState" data-state="idle" aria-live="polite">
+              Open CRM to load governed Quote headers.
+            </p>
+            <div
+              id="crmQuoteList"
+              class="choice-list crm-list"
+              role="listbox"
+              aria-label="CRM Quote headers"
+            ></div>
+            <button type="button" id="btnCrmMoreQuotes" disabled>Load more quotes</button>
+          </section>
+
+          <section class="stage crm-column" aria-labelledby="crmQuoteDetailHeading">
+            <p class="eyebrow">Quote header</p>
+            <h2 id="crmQuoteDetailHeading">Select a quote</h2>
+            <dl id="crmQuoteDetail" class="detail-list crm-detail">
+              <div><dt>Code</dt><dd data-field="code">—</dd></div>
+              <div><dt>Requirement</dt><dd data-field="requirement_id">—</dd></div>
+              <div><dt>Currency</dt><dd data-field="currency">—</dd></div>
+              <div><dt>Notes</dt><dd data-field="notes">—</dd></div>
+              <div><dt>Status</dt><dd data-field="status">—</dd></div>
+              <div><dt>Updated</dt><dd data-field="updated_at">—</dd></div>
+            </dl>
+            <div class="button-row crm-write-controls" id="crmQuoteWriteControls" hidden>
+              <button type="button" id="btnCrmEditQuote">Edit quote</button>
+              <button type="button" id="btnCrmArchiveQuote" class="danger-button">
+                Archive quote
+              </button>
+              <button type="button" id="btnCrmIssueQuote" hidden>Issue quote</button>
+              <button type="button" id="btnCrmConvertQuote" hidden>Convert quote</button>
+            </div>
+          </section>
+        </div>
+
+        <section class="stage crm-editor" id="crmIssueQuoteEditor" hidden>
+          <div class="crm-section-heading">
+            <div>
+              <p class="eyebrow">High-impact confirmation</p>
+              <h2 id="crmIssueQuoteEditorHeading">Issue Quote</h2>
+            </div>
+            <button type="button" class="secondary-button" id="btnCrmCancelIssueQuote">
+              Cancel
+            </button>
+          </div>
+          <form id="crmIssueQuoteForm">
+            <label>
+              Approval ref (optional)
+              <input id="crmIssueQuoteApprovalRef" maxlength="64" />
+            </label>
+            <label class="check">
+              <input type="checkbox" id="crmIssueQuoteConfirmed" required />
+              I understand this issues the selected draft Quote for commercial use.
+            </label>
+            <p class="crm-state" id="crmIssueQuoteFormState" data-state="idle" aria-live="polite">
+              Idempotency is generated per submission. Convert remains a separate action.
+            </p>
+            <button type="submit" id="btnCrmSubmitIssueQuote">Issue quote</button>
+          </form>
+        </section>
+
+        <div class="stage crm-hero">
+          <div>
+            <p class="eyebrow">CRM · Quote composition</p>
+            <h2>Quote Lines</h2>
+            <p class="stage-note">
+              Lines belong to the selected Quote Header. Amount is calculated by the server.
+            </p>
+          </div>
+          <div class="crm-hero-actions">
+            <button type="button" id="btnCrmNewQuoteLine" hidden>New quote line</button>
+            <button type="button" id="btnCrmRefreshQuoteLines" disabled>
+              Refresh lines
+            </button>
+          </div>
+        </div>
+
+        <div class="crm-workspace">
+          <section class="stage crm-column" aria-labelledby="crmQuoteLinesHeading">
+            <div class="crm-section-heading">
+              <div>
+                <p class="eyebrow">Selected quote</p>
+                <h2 id="crmQuoteLinesHeading">Lines</h2>
+              </div>
+              <span class="crm-count" id="crmQuoteLineCount">—</span>
+            </div>
+            <p class="crm-state" id="crmQuoteLineState" data-state="idle" aria-live="polite">
+              Select a Quote Header to load its active lines.
+            </p>
+            <div
+              id="crmQuoteLineList"
+              class="choice-list crm-list"
+              role="listbox"
+              aria-label="CRM Quote lines"
+            ></div>
+          </section>
+
+          <section class="stage crm-column" aria-labelledby="crmQuoteLineDetailHeading">
+            <p class="eyebrow">Quote line</p>
+            <h2 id="crmQuoteLineDetailHeading">Select a line</h2>
+            <dl id="crmQuoteLineDetail" class="detail-list crm-detail">
+              <div><dt>Line</dt><dd data-field="line_number">—</dd></div>
+              <div><dt>Description</dt><dd data-field="description">—</dd></div>
+              <div><dt>Quantity</dt><dd data-field="quantity">—</dd></div>
+              <div><dt>Unit price</dt><dd data-field="unit_price">—</dd></div>
+              <div><dt>Amount</dt><dd data-field="amount">—</dd></div>
+              <div><dt>Status</dt><dd data-field="status">—</dd></div>
+              <div><dt>Updated</dt><dd data-field="updated_at">—</dd></div>
+            </dl>
+            <div class="button-row crm-write-controls" id="crmQuoteLineWriteControls" hidden>
+              <button type="button" id="btnCrmEditQuoteLine">Edit line</button>
+              <button type="button" id="btnCrmArchiveQuoteLine" class="danger-button">
+                Archive line
+              </button>
+            </div>
+          </section>
+        </div>
+
+        <section class="stage crm-editor" id="crmQuoteLineEditor" hidden>
+          <div class="crm-section-heading">
+            <div>
+              <p class="eyebrow">Governed Quote Line write</p>
+              <h2 id="crmQuoteLineEditorHeading">Quote line</h2>
+            </div>
+            <button type="button" class="secondary-button" id="btnCrmCancelQuoteLine">
+              Cancel
+            </button>
+          </div>
+          <form id="crmQuoteLineForm">
+            <input type="hidden" id="crmQuoteLineMode" value="create" />
+            <div class="field-grid">
+              <label>
+                Description
+                <input id="crmQuoteLineDescription" maxlength="500" required />
+              </label>
+              <label>
+                Quantity
+                <input id="crmQuoteLineQuantity" type="number" min="0.001" step="0.001" required />
+              </label>
+              <label>
+                Unit price
+                <input id="crmQuoteLineUnitPrice" type="number" min="0" step="0.01" required />
+              </label>
+            </div>
+            <p class="crm-state" id="crmQuoteLineFormState" data-state="idle" aria-live="polite">
+              Amount is calculated by the server; Issue and Convert remain unavailable.
+            </p>
+            <button type="submit" id="btnCrmSubmitQuoteLine">Save line</button>
+          </form>
+        </section>
+
+        <div class="stage crm-hero">
+          <div>
+            <p class="eyebrow">CRM · Commercial transition</p>
+            <h2>Quote Convert</h2>
+            <p class="stage-note">
+              Convert an issued Quote into a Conversion instruction, then create a Sales Order shell.
+              Delivery and Invoice remain outside this surface.
+            </p>
+          </div>
+          <div class="crm-hero-actions">
+            <button type="button" id="btnCrmRefreshConversion" disabled>
+              Refresh conversion
+            </button>
+          </div>
+        </div>
+
+        <div class="crm-workspace">
+          <section class="stage crm-column" aria-labelledby="crmConversionHeading">
+            <div class="crm-section-heading">
+              <div>
+                <p class="eyebrow">Conversion instruction</p>
+                <h2 id="crmConversionHeading">Conversion</h2>
+              </div>
+            </div>
+            <p class="crm-state" id="crmConversionState" data-state="idle" aria-live="polite">
+              Select an issued Quote and convert it to create a Conversion instruction.
+            </p>
+            <dl id="crmConversionDetail" class="detail-list crm-detail">
+              <div><dt>Conversion ID</dt><dd data-field="id">—</dd></div>
+              <div><dt>Quote</dt><dd data-field="quote_id">—</dd></div>
+              <div><dt>Quote version</dt><dd data-field="quote_version">—</dd></div>
+              <div><dt>Currency</dt><dd data-field="currency">—</dd></div>
+              <div><dt>Functional currency</dt><dd data-field="functional_currency">—</dd></div>
+              <div><dt>FX rate</dt><dd data-field="fx_rate">—</dd></div>
+              <div><dt>Functional total</dt><dd data-field="functional_total">—</dd></div>
+              <div><dt>Status</dt><dd data-field="status">—</dd></div>
+            </dl>
+            <div class="button-row crm-write-controls" id="crmConversionWriteControls" hidden>
+              <button type="button" id="btnCrmCreateSalesOrder">Create sales order shell</button>
+            </div>
+          </section>
+
+          <section class="stage crm-column" aria-labelledby="crmConvertSoHeading">
+            <p class="eyebrow">Sales Order shell</p>
+            <h2 id="crmConvertSoHeading">No sales order yet</h2>
+            <p class="crm-state" id="crmConvertSoState" data-state="idle" aria-live="polite">
+              Create a Sales Order shell from a ready Conversion. Confirm is a separate Sales Order action.
+            </p>
+            <dl id="crmConvertSoDetail" class="detail-list crm-detail">
+              <div><dt>Code</dt><dd data-field="code">—</dd></div>
+              <div><dt>Sales Order ID</dt><dd data-field="id">—</dd></div>
+              <div><dt>Status</dt><dd data-field="status">—</dd></div>
+              <div><dt>Total</dt><dd data-field="total_amount">—</dd></div>
+              <div><dt>Currency</dt><dd data-field="currency">—</dd></div>
+            </dl>
+          </section>
+        </div>
+
+        <section class="stage crm-editor" id="crmConvertEditor" hidden>
+          <div class="crm-section-heading">
+            <div>
+              <p class="eyebrow">High-impact confirmation</p>
+              <h2 id="crmConvertEditorHeading">Convert Quote</h2>
+            </div>
+            <button type="button" class="secondary-button" id="btnCrmCancelConvert">
+              Cancel
+            </button>
+          </div>
+          <form id="crmConvertForm">
+            <div class="field-grid">
+              <label>
+                Functional currency (optional)
+                <input id="crmConvertFunctionalCurrency" minlength="3" maxlength="3" />
+              </label>
+              <label>
+                FX rate (optional)
+                <input id="crmConvertFxRate" type="number" min="0" step="0.00000001" />
+              </label>
+              <label>
+                Approval ref (optional)
+                <input id="crmConvertApprovalRef" maxlength="64" />
+              </label>
+            </div>
+            <label class="check">
+              <input type="checkbox" id="crmConvertConfirmed" required />
+              I understand this creates a Conversion instruction for the selected issued Quote.
+            </label>
+            <p class="crm-state" id="crmConvertFormState" data-state="idle" aria-live="polite">
+              Idempotency is generated per submission. Confirm and Issue remain unavailable here.
+            </p>
+            <button type="submit" id="btnCrmSubmitConvert">Convert quote</button>
+          </form>
+        </section>
+
+        <section class="stage crm-editor" id="crmCreateSoEditor" hidden>
+          <div class="crm-section-heading">
+            <div>
+              <p class="eyebrow">High-impact confirmation</p>
+              <h2>Create Sales Order shell</h2>
+            </div>
+            <button type="button" class="secondary-button" id="btnCrmCancelCreateSo">
+              Cancel
+            </button>
+          </div>
+          <form id="crmCreateSoForm">
+            <label class="check">
+              <input type="checkbox" id="crmCreateSoConfirmed" required />
+              I understand this creates a Sales Order shell from the ready Conversion.
+            </label>
+            <p class="crm-state" id="crmCreateSoFormState" data-state="idle" aria-live="polite">
+              Creates a Sales Order shell only. Confirm remains a separate action.
+            </p>
+            <button type="submit" id="btnCrmSubmitCreateSo">Create sales order</button>
+          </form>
+        </section>
+
+        <div class="stage crm-hero">
+          <div>
+            <p class="eyebrow">CRM · Order shell</p>
+            <h2>Sales Orders</h2>
+            <p class="stage-note">
+              Sales Order headers and lines. Confirm and Delivery Order create are available when
+              permitted. Invoice remains unavailable.
+            </p>
+          </div>
+          <div class="crm-hero-actions">
+            <button type="button" id="btnCrmRefreshSalesOrders">Refresh sales orders</button>
+          </div>
+        </div>
+
+        <div class="crm-workspace">
+          <section class="stage crm-column" aria-labelledby="crmSalesOrdersHeading">
+            <div class="crm-section-heading">
+              <div>
+                <p class="eyebrow">Order collection</p>
+                <h2 id="crmSalesOrdersHeading">Sales Orders</h2>
+              </div>
+              <span class="crm-count" id="crmSalesOrderCount">—</span>
+            </div>
+            <p class="crm-state" id="crmSalesOrderState" data-state="idle" aria-live="polite">
+              Open CRM to load governed Sales Orders.
+            </p>
+            <div
+              id="crmSalesOrderList"
+              class="choice-list crm-list"
+              role="listbox"
+              aria-label="CRM Sales Orders"
+            ></div>
+            <button type="button" id="btnCrmMoreSalesOrders" disabled>
+              Load more sales orders
+            </button>
+          </section>
+
+          <section class="stage crm-column" aria-labelledby="crmSalesOrderDetailHeading">
+            <p class="eyebrow">Sales Order</p>
+            <h2 id="crmSalesOrderDetailHeading">Select a sales order</h2>
+            <dl id="crmSalesOrderDetail" class="detail-list crm-detail">
+              <div><dt>Code</dt><dd data-field="code">—</dd></div>
+              <div><dt>Quote</dt><dd data-field="quote_id">—</dd></div>
+              <div><dt>Conversion</dt><dd data-field="conversion_id">—</dd></div>
+              <div><dt>Currency</dt><dd data-field="currency">—</dd></div>
+              <div><dt>Total</dt><dd data-field="total_amount">—</dd></div>
+              <div><dt>Status</dt><dd data-field="status">—</dd></div>
+              <div><dt>Created</dt><dd data-field="created_at">—</dd></div>
+            </dl>
+            <div class="button-row crm-write-controls" id="crmSalesOrderWriteControls" hidden>
+              <button type="button" id="btnCrmConfirmSalesOrder">Confirm sales order</button>
+              <button type="button" id="btnCrmCreateDeliveryOrder" hidden>
+                Create delivery order
+              </button>
+            </div>
+          </section>
+        </div>
+
+        <section class="stage crm-editor" id="crmConfirmSoEditor" hidden>
+          <div class="crm-section-heading">
+            <div>
+              <p class="eyebrow">High-impact confirmation</p>
+              <h2 id="crmConfirmSoEditorHeading">Confirm Sales Order</h2>
+            </div>
+            <button type="button" class="secondary-button" id="btnCrmCancelConfirmSo">
+              Cancel
+            </button>
+          </div>
+          <form id="crmConfirmSoForm">
+            <label>
+              Approval ref (optional)
+              <input id="crmConfirmSoApprovalRef" maxlength="64" />
+            </label>
+            <label class="check">
+              <input type="checkbox" id="crmConfirmSoConfirmed" required />
+              I understand this confirms the selected Sales Order and materializes its lines.
+            </label>
+            <p class="crm-state" id="crmConfirmSoFormState" data-state="idle" aria-live="polite">
+              Idempotency is generated per submission. Delivery Order remains a separate action.
+            </p>
+            <button type="submit" id="btnCrmSubmitConfirmSo">Confirm sales order</button>
+          </form>
+        </section>
+
+        <section class="stage crm-editor" id="crmCreateDoEditor" hidden>
+          <div class="crm-section-heading">
+            <div>
+              <p class="eyebrow">High-impact confirmation</p>
+              <h2>Create Delivery Order shell</h2>
+            </div>
+            <button type="button" class="secondary-button" id="btnCrmCancelCreateDo">
+              Cancel
+            </button>
+          </div>
+          <form id="crmCreateDoForm">
+            <label class="check">
+              <input type="checkbox" id="crmCreateDoConfirmed" required />
+              I understand this creates a Delivery Order shell from the confirmed Sales Order.
+            </label>
+            <p class="crm-state" id="crmCreateDoFormState" data-state="idle" aria-live="polite">
+              Creates a Delivery Order shell only. Release remains a separate action.
+            </p>
+            <button type="submit" id="btnCrmSubmitCreateDo">Create delivery order</button>
+          </form>
+        </section>
+
+        <div class="stage crm-hero">
+          <div>
+            <p class="eyebrow">CRM · Fulfillment shell</p>
+            <h2>Delivery Order</h2>
+            <p class="stage-note">
+              Sales-Order-scoped Delivery Order create, read, and Release. No tenant DO collection.
+              Invoice create when permitted; RA create when shipped and permitted. Restock/Credit Note/Void remain unavailable.
+            </p>
+          </div>
+          <div class="crm-hero-actions">
+            <button type="button" id="btnCrmRefreshDeliveryOrder" disabled>
+              Refresh delivery order
+            </button>
+          </div>
+        </div>
+
+        <div class="crm-workspace">
+          <section class="stage crm-column" aria-labelledby="crmDeliveryOrderDetailHeading">
+            <p class="eyebrow">Selected sales order</p>
+            <h2 id="crmDeliveryOrderDetailHeading">No delivery order yet</h2>
+            <p class="crm-state" id="crmDeliveryOrderState" data-state="idle" aria-live="polite">
+              Create a Delivery Order from a confirmed Sales Order. No tenant DO list is available.
+            </p>
+            <dl id="crmDeliveryOrderDetail" class="detail-list crm-detail">
+              <div><dt>Code</dt><dd data-field="code">—</dd></div>
+              <div><dt>Sales order</dt><dd data-field="sales_order_id">—</dd></div>
+              <div><dt>Currency</dt><dd data-field="currency">—</dd></div>
+              <div><dt>Total</dt><dd data-field="total_amount">—</dd></div>
+              <div><dt>Status</dt><dd data-field="status">—</dd></div>
+              <div><dt>Released</dt><dd data-field="released_at">—</dd></div>
+            </dl>
+            <div class="button-row crm-write-controls" id="crmDeliveryOrderWriteControls" hidden>
+              <button type="button" id="btnCrmReleaseDeliveryOrder">
+                Release delivery order
+              </button>
+              <button type="button" id="btnCrmCreateArInvoice" hidden>
+                Create AR invoice
+              </button>
+              <button type="button" id="btnCrmCreateReturnAuthorization" hidden>
+                Create return authorization
+              </button>
+            </div>
+          </section>
+        </div>
+
+        <section class="stage crm-editor" id="crmReleaseDoEditor" hidden>
+          <div class="crm-section-heading">
+            <div>
+              <p class="eyebrow">High-impact confirmation</p>
+              <h2 id="crmReleaseDoEditorHeading">Release Delivery Order</h2>
+            </div>
+            <button type="button" class="secondary-button" id="btnCrmCancelReleaseDo">
+              Cancel
+            </button>
+          </div>
+          <form id="crmReleaseDoForm">
+            <label>
+              Approval ref (optional)
+              <input id="crmReleaseDoApprovalRef" maxlength="64" />
+            </label>
+            <label class="check">
+              <input type="checkbox" id="crmReleaseDoConfirmed" required />
+              I understand this releases the selected Delivery Order for fulfillment.
+            </label>
+            <p class="crm-state" id="crmReleaseDoFormState" data-state="idle" aria-live="polite">
+              Idempotency is generated per submission. Invoice create when permitted; RA create when shipped and permitted. Restock/Credit Note/Void remain unavailable.
+            </p>
+            <button type="submit" id="btnCrmSubmitReleaseDo">Release delivery order</button>
+          </form>
+        </section>
+
+        <section class="stage crm-editor" id="crmCreateArInvoiceEditor" hidden>
+          <div class="crm-section-heading">
+            <div>
+              <p class="eyebrow">High-impact confirmation</p>
+              <h2>Create AR Invoice shell</h2>
+            </div>
+            <button type="button" class="secondary-button" id="btnCrmCancelCreateArInvoice">
+              Cancel
+            </button>
+          </div>
+          <form id="crmCreateArInvoiceForm">
+            <label class="check">
+              <input type="checkbox" id="crmCreateArInvoiceConfirmed" required />
+              I understand this creates an AR Invoice shell from the released Delivery Order.
+            </label>
+            <p class="crm-state" id="crmCreateArInvoiceFormState" data-state="idle" aria-live="polite">
+              Creates an AR Invoice shell only. Issue remains a separate action.
+            </p>
+            <button type="submit" id="btnCrmSubmitCreateArInvoice">Create AR invoice</button>
+          </form>
+        </section>
+
+        <div class="stage crm-hero">
+          <div>
+            <p class="eyebrow">CRM · Billing shell</p>
+            <h2>AR Invoice</h2>
+            <p class="stage-note">
+              Delivery-Order-scoped AR Invoice create, read, and Issue. No tenant Invoice collection.
+              RA create when DO is shipped and permitted. Restock/Credit Note/Void/Receipt remain unavailable.
+            </p>
+          </div>
+          <div class="crm-hero-actions">
+            <button type="button" id="btnCrmRefreshArInvoice" disabled>
+              Refresh AR invoice
+            </button>
+          </div>
+        </div>
+
+        <div class="crm-workspace">
+          <section class="stage crm-column" aria-labelledby="crmArInvoiceDetailHeading">
+            <p class="eyebrow">Selected delivery order</p>
+            <h2 id="crmArInvoiceDetailHeading">No AR invoice yet</h2>
+            <p class="crm-state" id="crmArInvoiceState" data-state="idle" aria-live="polite">
+              Create an AR Invoice from a released Delivery Order. No tenant Invoice list is available.
+            </p>
+            <dl id="crmArInvoiceDetail" class="detail-list crm-detail">
+              <div><dt>Code</dt><dd data-field="code">—</dd></div>
+              <div><dt>Delivery order</dt><dd data-field="delivery_order_id">—</dd></div>
+              <div><dt>Sales order</dt><dd data-field="sales_order_id">—</dd></div>
+              <div><dt>Currency</dt><dd data-field="currency">—</dd></div>
+              <div><dt>Total</dt><dd data-field="total_amount">—</dd></div>
+              <div><dt>Status</dt><dd data-field="status">—</dd></div>
+              <div><dt>Issued</dt><dd data-field="issued_at">—</dd></div>
+            </dl>
+            <div class="button-row crm-write-controls" id="crmArInvoiceWriteControls" hidden>
+              <button type="button" id="btnCrmIssueArInvoice">
+                Issue AR invoice
+              </button>
+            </div>
+          </section>
+        </div>
+
+        <section class="stage crm-editor" id="crmIssueArInvoiceEditor" hidden>
+          <div class="crm-section-heading">
+            <div>
+              <p class="eyebrow">High-impact confirmation</p>
+              <h2 id="crmIssueArInvoiceEditorHeading">Issue AR Invoice</h2>
+            </div>
+            <button type="button" class="secondary-button" id="btnCrmCancelIssueArInvoice">
+              Cancel
+            </button>
+          </div>
+          <form id="crmIssueArInvoiceForm">
+            <label class="check">
+              <input type="checkbox" id="crmIssueArInvoiceConfirmed" required />
+              I understand this issues the selected AR Invoice for billing.
+            </label>
+            <p class="crm-state" id="crmIssueArInvoiceFormState" data-state="idle" aria-live="polite">
+              Idempotency is generated per submission. RA create when DO is shipped and permitted. Restock/Credit Note/Void/Receipt remain unavailable.
+            </p>
+            <button type="submit" id="btnCrmSubmitIssueArInvoice">Issue AR invoice</button>
+          </form>
+        </section>
+
+        <section class="stage crm-editor" id="crmCreateReturnAuthorizationEditor" hidden>
+          <div class="crm-section-heading">
+            <div>
+              <p class="eyebrow">High-impact confirmation</p>
+              <h2>Create Return Authorization</h2>
+            </div>
+            <button type="button" class="secondary-button" id="btnCrmCancelCreateReturnAuthorization">
+              Cancel
+            </button>
+          </div>
+          <form id="crmCreateReturnAuthorizationForm">
+            <label>
+              Return reason
+              <textarea id="crmCreateReturnAuthorizationReason" maxlength="500" required rows="3"></textarea>
+            </label>
+            <p class="crm-form-note">
+              When an issued or voided AR Invoice is selected, invoice_id is attached automatically; otherwise it is omitted.
+            </p>
+            <label class="check">
+              <input type="checkbox" id="crmCreateReturnAuthorizationConfirmed" required />
+              I understand this creates a Return Authorization for the shipped Delivery Order.
+            </label>
+            <p class="crm-state" id="crmCreateReturnAuthorizationFormState" data-state="idle" aria-live="polite">
+              Creates a Return Authorization shell only. Restock and Credit Note remain unavailable.
+            </p>
+            <button type="submit" id="btnCrmSubmitCreateReturnAuthorization">Create return authorization</button>
+          </form>
+        </section>
+
+        <div class="stage crm-hero">
+          <div>
+            <p class="eyebrow">CRM · Returns shell</p>
+            <h2>Return Authorization</h2>
+            <p class="stage-note">
+              Delivery-Order-scoped Return Authorization create and read. No tenant RA collection.
+              Restock, Credit Note, and Void remain unavailable.
+            </p>
+          </div>
+          <div class="crm-hero-actions">
+            <button type="button" id="btnCrmRefreshReturnAuthorization" disabled>
+              Refresh return authorization
+            </button>
+          </div>
+        </div>
+
+        <div class="crm-workspace">
+          <section class="stage crm-column" aria-labelledby="crmReturnAuthorizationDetailHeading">
+            <p class="eyebrow">Selected delivery order</p>
+            <h2 id="crmReturnAuthorizationDetailHeading">No return authorization yet</h2>
+            <p class="crm-state" id="crmReturnAuthorizationState" data-state="idle" aria-live="polite">
+              Create a Return Authorization from a shipped Delivery Order. No tenant RA list is available.
+            </p>
+            <dl id="crmReturnAuthorizationDetail" class="detail-list crm-detail">
+              <div><dt>Code</dt><dd data-field="code">—</dd></div>
+              <div><dt>Delivery order</dt><dd data-field="delivery_order_id">—</dd></div>
+              <div><dt>Invoice</dt><dd data-field="invoice_id">—</dd></div>
+              <div><dt>Credit note</dt><dd data-field="credit_note_id">—</dd></div>
+              <div><dt>Reason</dt><dd data-field="reason">—</dd></div>
+              <div><dt>Status</dt><dd data-field="status">—</dd></div>
+              <div><dt>Created</dt><dd data-field="created_at">—</dd></div>
+              <div><dt>Restocked</dt><dd data-field="restocked_at">—</dd></div>
+            </dl>
+          </section>
+        </div>
+
+        <div class="crm-workspace">
+          <section class="stage crm-column" aria-labelledby="crmSalesOrderLinesHeading">
+            <div class="crm-section-heading">
+              <div>
+                <p class="eyebrow">Selected sales order</p>
+                <h2 id="crmSalesOrderLinesHeading">Lines</h2>
+              </div>
+              <span class="crm-count" id="crmSalesOrderLineCount">—</span>
+            </div>
+            <p class="crm-state" id="crmSalesOrderLineState" data-state="idle" aria-live="polite">
+              Select a Sales Order to load its lines.
+            </p>
+            <div
+              id="crmSalesOrderLineList"
+              class="choice-list crm-list"
+              role="listbox"
+              aria-label="CRM Sales Order lines"
+            ></div>
+          </section>
+
+          <section class="stage crm-column" aria-labelledby="crmSalesOrderLineDetailHeading">
+            <p class="eyebrow">Sales Order line</p>
+            <h2 id="crmSalesOrderLineDetailHeading">Select a line</h2>
+            <dl id="crmSalesOrderLineDetail" class="detail-list crm-detail">
+              <div><dt>Line</dt><dd data-field="line_number">—</dd></div>
+              <div><dt>Description</dt><dd data-field="description">—</dd></div>
+              <div><dt>Quantity</dt><dd data-field="quantity">—</dd></div>
+              <div><dt>Unit price</dt><dd data-field="unit_price">—</dd></div>
+              <div><dt>Amount</dt><dd data-field="amount">—</dd></div>
+            </dl>
+          </section>
+        </div>
+
+        <section class="stage crm-editor" id="crmQuoteEditor" hidden>
+          <div class="crm-section-heading">
+            <div>
+              <p class="eyebrow">Governed Quote header write</p>
+              <h2 id="crmQuoteEditorHeading">Quote</h2>
+            </div>
+            <button type="button" class="secondary-button" id="btnCrmCancelQuote">
+              Cancel
+            </button>
+          </div>
+          <form id="crmQuoteForm">
+            <input type="hidden" id="crmQuoteMode" value="create" />
+            <div class="field-grid">
+              <label>
+                Requirement
+                <select id="crmQuoteRequirement" required></select>
+              </label>
+              <label>
+                Currency
+                <input id="crmQuoteCurrency" minlength="3" maxlength="3" value="USD" required />
+              </label>
+              <label>
+                Notes (optional)
+                <textarea id="crmQuoteNotes" maxlength="4000" rows="4"></textarea>
+              </label>
+            </div>
+            <p class="crm-state" id="crmQuoteFormState" data-state="idle" aria-live="polite">
+              Quote Lines, Issue, and Convert remain outside this form.
+            </p>
+            <button type="submit" id="btnCrmSubmitQuote">Save quote</button>
+          </form>
+        </section>
+
+        <section class="stage crm-editor" id="crmCustomerEditor" hidden>
+          <div class="crm-section-heading">
+            <div>
+              <p class="eyebrow">Governed write</p>
+              <h2 id="crmCustomerEditorHeading">Customer</h2>
+            </div>
+            <button type="button" class="secondary-button" id="btnCrmCancelCustomer">
+              Cancel
+            </button>
+          </div>
+          <form id="crmCustomerForm">
+            <input type="hidden" id="crmCustomerMode" value="create" />
+            <div class="field-grid">
+              <label>
+                Customer code
+                <input id="crmCustomerCode" maxlength="64" required autocomplete="off" />
+              </label>
+              <label>
+                Display name
+                <input id="crmCustomerName" maxlength="255" required autocomplete="off" />
+              </label>
+              <label>
+                Owner subject ID (optional)
+                <input id="crmCustomerOwner" autocomplete="off" />
+              </label>
+            </div>
+            <p class="crm-state" id="crmCustomerFormState" data-state="idle" aria-live="polite">
+              Tenant and actor context are supplied by the trusted session.
+            </p>
+            <button type="submit" id="btnCrmSubmitCustomer">Save customer</button>
+          </form>
+        </section>
+
+        <section class="stage crm-editor" id="crmContactEditor" hidden>
+          <div class="crm-section-heading">
+            <div>
+              <p class="eyebrow">Governed write · PII minimized</p>
+              <h2 id="crmContactEditorHeading">Contact</h2>
+            </div>
+            <button type="button" class="secondary-button" id="btnCrmCancelContact">
+              Cancel
+            </button>
+          </div>
+          <form id="crmContactForm">
+            <input type="hidden" id="crmContactMode" value="create" />
+            <div class="field-grid">
+              <label>
+                Display name
+                <input id="crmContactName" maxlength="255" required autocomplete="off" />
+              </label>
+              <label>
+                Title (optional)
+                <input id="crmContactTitle" maxlength="128" autocomplete="off" />
+              </label>
+              <label>
+                Email (optional)
+                <input id="crmContactEmail" type="email" maxlength="320" autocomplete="off" />
+              </label>
+              <label>
+                Phone (optional)
+                <input id="crmContactPhone" maxlength="64" autocomplete="off" />
+              </label>
+            </div>
+            <p class="crm-state" id="crmContactFormState" data-state="idle" aria-live="polite">
+              Email and phone are optional and are never inferred.
+            </p>
+            <button type="submit" id="btnCrmSubmitContact">Save contact</button>
+          </form>
+        </section>
+
+        <section class="stage crm-editor crm-archive-confirm" id="crmArchiveEditor" hidden>
+          <div class="crm-section-heading">
+            <div>
+              <p class="eyebrow">Explicit confirmation</p>
+              <h2 id="crmArchiveHeading">Archive record</h2>
+            </div>
+            <button type="button" class="secondary-button" id="btnCrmCancelArchive">
+              Cancel
+            </button>
+          </div>
+          <form id="crmArchiveForm">
+            <label>
+              Archive reason
+              <textarea id="crmArchiveReason" maxlength="500" required rows="3"></textarea>
+            </label>
+            <label class="check">
+              <input type="checkbox" id="crmArchiveConfirmed" required />
+              I understand this archives the selected record and does not hard-delete it.
+            </label>
+            <p class="crm-state" id="crmArchiveFormState" data-state="idle" aria-live="polite">
+              Submission remains subject to server Permission and version checks.
+            </p>
+            <button type="submit" id="btnCrmConfirmArchive" class="danger-button">
+              Confirm archive
+            </button>
+          </form>
+        </section>
+      </section>
+
+      <section
+        class="surface-panel"
+        data-surface-panel="product"
+        aria-label="Product surface"
+        hidden
+      >
+        <div class="stage">
+          <h2>产品目录</h2>
+          <p class="stage-note">
+            声明式 Package Surface 投影（PHX-G165 / BOOK23 §10.1）。优先加载已安装
+            <code>product.*</code> surfaces；无安装时回退 offline fixture。动作经
+            resolve 后移交 Operator。
+          </p>
+          <div id="productCatalog" class="choice-list" role="listbox" aria-label="Product catalog"></div>
+        </div>
+        <div class="stage">
+          <h2>产品摘要</h2>
+          <dl id="productDetail" class="detail-list">
+            <div><dt>名称</dt><dd data-field="name">—</dd></div>
+            <div><dt>SKU</dt><dd data-field="sku">—</dd></div>
+            <div><dt>状态</dt><dd data-field="status">—</dd></div>
+            <div><dt>说明</dt><dd data-field="summary">选择左侧产品以查看摘要。</dd></div>
+          </dl>
+          <div class="button-row">
+            <button type="button" id="btnProductHandoff" disabled>
+              发送到 Operator
+            </button>
+          </div>
+        </div>
+        <div class="stage">
+          <h2>样品流程（演示）</h2>
+          <p class="stage-note">
+            对齐 Legacy 知识包 <code>sample/</code>：收样 → 分析 → 入库 → 转报价。
+            演示态移交 Operator（Session→Intent→Preview→Commit）；
+            <strong>不</strong>宿主业务真相、不写 Legacy、不开 CRM CRUD。
+          </p>
+          <div
+            id="sampleFlowQueue"
+            class="choice-list"
+            role="listbox"
+            aria-label="Sample flow demo steps"
+          ></div>
+          <pre id="sampleFlowView" class="panel-pre">选择样品步骤以查看摘要。</pre>
+          <div class="button-row">
+            <button type="button" id="btnSampleFlowHandoff" disabled>
+              样品步骤 → Operator
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section
+        class="surface-panel"
+        data-surface-panel="ops"
+        aria-label="Operations surface"
+        hidden
+      >
+        <div class="stage">
+          <h2>运营工作台</h2>
+          <p class="stage-note">
+            声明式 Ops Workbench（<code>noventi.sample.ops</code>）。优先加载已安装
+            <code>ops.*</code> surfaces；编排简报或 resolve 动作后移交 Operator。
+          </p>
+          <div id="opsQueue" class="choice-list" role="listbox" aria-label="Ops queue"></div>
+        </div>
+        <div class="stage">
+          <h2>运营简报</h2>
+          <div class="field-grid">
+            <label>标题 <input id="opsBriefTitle" value="日运营简报" /></label>
+            <label>焦点 <input id="opsBriefFocus" value="fulfillment" /></label>
+          </div>
+          <textarea
+            id="opsBriefBody"
+            rows="4"
+            placeholder="描述本班次需受治理处理的运营事项"
+          ></textarea>
+          <div class="button-row">
+            <button type="button" id="btnOpsComposeBrief">生成简报并发送到 Operator</button>
+            <button type="button" id="btnOpsHandoffSelected" disabled>
+              选中队列项 → Operator
+            </button>
+          </div>
+          <pre id="opsBriefView" class="panel-pre">尚未生成运营简报。</pre>
+        </div>
+        <div class="stage">
+          <h2>订单流程（演示）</h2>
+          <p class="stage-note">
+            对齐 Legacy 知识包 <code>sales/</code> · <code>delivery/</code> · <code>order-chain/</code>：
+            转 SO → Approve Open → 建 DO → 履约核对。演示态移交 Operator；
+            Approve 为高影响（需 Workflow）；创建 DO <strong>不</strong>扣库存。
+          </p>
+          <div
+            id="orderFlowQueue"
+            class="choice-list"
+            role="listbox"
+            aria-label="Order flow demo steps"
+          ></div>
+          <pre id="orderFlowView" class="panel-pre">选择订单步骤以查看摘要。</pre>
+          <div class="button-row">
+            <button type="button" id="btnOrderFlowHandoff" disabled>
+              订单步骤 → Operator
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section
+        class="surface-panel"
+        data-surface-panel="approval"
+        aria-label="Approval surface"
+        hidden
+      >
+        <div class="stage">
+          <h2>Request Workflow approval</h2>
+          <p class="stage-note">
+            高影响预览必须经 Workflow；壳只转发与呈现，不裁决。
+          </p>
+          <div class="field-grid">
+            <label>Definition ID <input id="definitionId" spellcheck="false" /></label>
+            <label>Approver subject <input id="approvalSubjectId" spellcheck="false" /></label>
+          </div>
+          <div class="button-row">
+            <button type="button" id="btnRequestApproval" disabled>Request approval</button>
+            <button type="button" id="btnPresentApproval" disabled>Present approval</button>
+          </div>
+          <pre id="approvalView" class="panel-pre">No approval presentation yet.</pre>
+        </div>
+      </section>
+
+      <section
+        class="surface-panel"
+        data-surface-panel="admin"
+        aria-label="Admin console"
+        hidden
+      >
+        <div class="stage">
+          <h2>Platform observability</h2>
+          <p class="stage-note">
+            Gateway 探针 + 平台 IdP 注册表（G62）、租户联邦绑定薄操作（G69）、声明角色目录（G91）、
+            租户角色目录只读（G92）、角色状态探针（G93）、权限 evaluate 薄探针（G94）、
+            effective-permissions 只读探针（G95）、JWT/denylist 状态探针（G96）、
+            Event Bus stats/DLQ 薄探针（G97）、Event dispatch/get 薄探针（G98）、
+            Event enqueue/publish 薄探针（G99）、Event subscribe/replay 薄探针（G100）与
+            Marketplace 状态/listing 薄探针（G101；支付清算姿态见 G162）与
+            Marketplace listing 生命周期薄探针（G102）与 Marketplace acquire 技术薄探针（G103；
+            非外部 PSP）与 Marketplace Foundation 商业薄探针（G141；pricing/invoice/dispute/revenue-share）与
+            Marketplace payment clearing 薄探针（G162；默认 503；env ON = internal record；≠ 外部 PSP / 外部仲裁）与 Workflow 状态/定义/实例/任务薄探针（G104；审批真相仍归 Workflow Kernel）与
+            Workflow 任务 approve/reject 薄探针（G105）与 Workflow signal/cancel 薄探针（G106）与
+            Workflow compensate/escalate 薄探针（G107；Workflow Terminal 运维面齐）与
+            Package 状态/manifest/surfaces 薄探针（G108）与             Package publish/install/disable/resolve
+            薄探针（G109；Package Terminal 运维面齐）与             Knowledge 状态/entity 薄探针（G110）与 Knowledge archive/share/search 薄探针（G111）与
+            Knowledge link/provenance 薄探针（G112；Knowledge Terminal 运维面齐）与
+            Twin 状态/snapshot 薄探针（G113）与 Twin authorize fail-closed 探针（G114；
+            Twin Terminal 运维面齐）与 Brain 状态/insight 薄探针（G115）与
+            Brain execute fail-closed 探针（G116；Brain Terminal 运维面齐）与
+            AI Runtime 状态/run 薄探针（G117；create/get 使用 ai_employee 头）与
+            AI tools/memory 薄探针（G118）与 AI approval/commit 薄探针（G119；
+            AI Runtime Terminal 运维面齐；commit 无审批时 fail-closed）与
+            Identity 状态/subject 薄探针（G120）与 Identity credential/session 薄探针（G121）与
+            Identity credential validate/revoke 与 session revoke 薄探针（G137）与
+            Identity AI employee / platform governor 薄探针（G138；
+            Identity Terminal 运维面齐）与 Organization 状态/tenant/enterprise 薄探针（G122）与
+            Organization unit/membership 薄探针（G123）与 Organization lifecycle 薄探针（G124；
+            unit status / membership suspend·reactivate）与
+            Organization membership transfer/end 薄探针（G125）与
+            Organization enterprise lifecycle 薄探针（G126）与
+            Platform tenant lifecycle 薄探针（G127）与
+            Organization get enterprise 薄探针（G142；Organization Terminal 运维面齐）与
+            Permission policy/grant 手工写入薄探针（G128；≠ Role→grant auto-write）与
+            Permission deprecate/delegate 薄探针（G129）与
+            Role→grant 产品姿态薄行（G146；auto_grant_from_role_enabled=false）与
+            Ops context echo elevation-reject 与 Workflow definition deprecation 薄探针（G140）。
+            平台面使用 platform 上下文；租户目录/状态/evaluate/effective/events/
+            marketplace listing / workflow / package / knowledge / twin / brain / ai / identity / organization 需 Tenant 头；path id 经独立输入，禁止 body 提升；secret 不下发。
+          </p>
+          <div class="button-row">
+            <button type="button" id="btnAdminHealth">Health</button>
+            <button type="button" id="btnAdminRelease">Release</button>
+            <button type="button" id="btnAdminAdapters">Adapters</button>
+            <button type="button" id="btnAdminContext">Context</button>
+            <button type="button" id="btnAdminContextEcho">Context echo (expect 400 elevation)</button>
+            <button type="button" id="btnAdminIdp">IdP / JWT status</button>
+            <button type="button" id="btnAdminJwtStatus">JWT status</button>
+            <button type="button" id="btnAdminMarketplaceStatus">Marketplace status</button>
+            <button type="button" id="btnAdminHostAcquireStatus">
+              Host-acquire status (G175)
+            </button>
+            <p id="hostAcquireStatus" class="stage-note" aria-live="polite">
+              Host-acquire posture not loaded.
+            </p>
+            <button type="button" id="btnAdminPaymentClearingStatus">
+              Payment-clearing status (G183)
+            </button>
+            <p id="paymentClearingStatus" class="stage-note" aria-live="polite">
+              Payment-clearing posture not loaded.
+            </p>
+            <button type="button" id="btnAdminDomainFoundationStatus">
+              Domain foundation status (G194)
+            </button>
+            <p id="domainFoundationStatus" class="stage-note" aria-live="polite">
+              Domain foundation posture not loaded.
+            </p>
+            <button type="button" id="btnAdminFinancePlatformStatus">
+              Finance/platform status strip (G394)
+            </button>
+            <p id="financePlatformStatus" class="stage-note" aria-live="polite">
+              Finance/platform posture not loaded.
+            </p>
+            <button type="button" id="btnAdminEventOutboxStatus">
+              Event/outbox status strip (G395)
+            </button>
+            <p id="eventOutboxStatus" class="stage-note" aria-live="polite">
+              Event/outbox posture not loaded.
+            </p>
+            <button type="button" id="btnAdminPackageResolveAlignStatus">
+              Package↔Terminal resolve align (G398)
+            </button>
+            <p id="packageResolveAlignStatus" class="stage-note" aria-live="polite">
+              Package↔Terminal resolve posture not loaded.
+            </p>
+            <button type="button" id="btnAdminRoleCatalogStatus">
+              Role catalog status (G201)
+            </button>
+            <p id="roleCatalogAdminStatus" class="stage-note" aria-live="polite">
+              Role catalog posture not loaded.
+            </p>
+            <button type="button" id="btnAdminOpenapiInventoryStatus">
+              OpenAPI inventory status (G289)
+            </button>
+            <p id="openapiInventoryAdminStatus" class="stage-note" aria-live="polite">
+              OpenAPI inventory posture not loaded.
+            </p>
+            <button type="button" id="btnAdminSampleKnowledgePackStatus">
+              Sample knowledge pack status (G293)
+            </button>
+            <p id="sampleKnowledgePackAdminStatus" class="stage-note" aria-live="polite">
+              Sample knowledge pack posture not loaded.
+            </p>
+            <button type="button" id="btnAdminListingCreate">Create listing</button>
+            <button type="button" id="btnAdminListingGet">Get listing</button>
+            <button type="button" id="btnAdminListingSignature">Attach listing signature</button>
+            <button type="button" id="btnAdminListingSubmit">Submit listing</button>
+            <button type="button" id="btnAdminListingReview">Review approve listing</button>
+            <button type="button" id="btnAdminListingPublish">Publish listing</button>
+            <button type="button" id="btnAdminListingAcquire">Acquire listing</button>
+            <button type="button" id="btnAdminListingAcquireHost">
+              Acquire → Host (G172)
+            </button>
+            <button type="button" id="btnAdminListingRevoke">Revoke listing</button>
+            <button type="button" id="btnAdminListingSetPricing">Set listing pricing</button>
+            <button type="button" id="btnAdminListingCreateInvoice">Create listing invoice</button>
+            <button type="button" id="btnAdminListingPaymentClearing">Payment clearing (G162)</button>
+            <button type="button" id="btnAdminListingOpenDispute">Open listing dispute</button>
+            <button type="button" id="btnAdminListingResolveDispute">Resolve listing dispute</button>
+            <button type="button" id="btnAdminListingSetRevenueShare">Set listing revenue share</button>
+            <button type="button" id="btnAdminWorkflowStatus">Workflow status</button>
+            <button type="button" id="btnAdminWorkflowCreateDefinition">Create workflow definition</button>
+            <button type="button" id="btnAdminWorkflowDeprecateDefinition">Deprecate workflow definition</button>
+            <button type="button" id="btnAdminWorkflowStartInstance">Start workflow instance</button>
+            <button type="button" id="btnAdminWorkflowGetInstance">Get workflow instance</button>
+            <button type="button" id="btnAdminWorkflowListTasks">List workflow tasks</button>
+            <button type="button" id="btnAdminWorkflowApproveTask">Approve workflow task</button>
+            <button type="button" id="btnAdminWorkflowRejectTask">Reject workflow task</button>
+            <button type="button" id="btnAdminWorkflowSignalInstance">Signal workflow instance</button>
+            <button type="button" id="btnAdminWorkflowCancelInstance">Cancel workflow instance</button>
+            <button type="button" id="btnAdminWorkflowCompensateInstance">Compensate workflow instance</button>
+            <button type="button" id="btnAdminWorkflowEscalateTask">Escalate workflow task</button>
+            <button type="button" id="btnAdminPackageStatus">Package status</button>
+            <button type="button" id="btnAdminPackageRegisterManifest">Register package manifest</button>
+            <button type="button" id="btnAdminPackageGetManifest">Get package manifest</button>
+            <button type="button" id="btnAdminPackageListSurfaces">List package surfaces</button>
+            <button type="button" id="btnAdminPackagePublishManifest">Publish package manifest</button>
+            <button type="button" id="btnAdminPackageInstall">Install package</button>
+            <button type="button" id="btnAdminPackageDisableInstallation">Disable package installation</button>
+            <button type="button" id="btnAdminPackageResolveAction">Resolve package action</button>
+            <button type="button" id="btnAdminKnowledgeStatus">Knowledge status</button>
+            <button type="button" id="btnAdminKnowledgeUpsertEntity">Upsert knowledge entity</button>
+            <button type="button" id="btnAdminKnowledgeGetEntity">Get knowledge entity</button>
+            <button type="button" id="btnAdminKnowledgeListEntities">List knowledge entities</button>
+            <button type="button" id="btnAdminKnowledgeArchiveEntity">Archive knowledge entity</button>
+            <button type="button" id="btnAdminKnowledgeShareEntity">Share knowledge entity</button>
+            <button type="button" id="btnAdminKnowledgeSearch">Search knowledge</button>
+            <button type="button" id="btnAdminKnowledgeCreateLink">Create knowledge link</button>
+            <button type="button" id="btnAdminKnowledgeGetProvenance">Get knowledge provenance</button>
+            <button type="button" id="btnAdminTwinStatus">Twin status</button>
+            <button type="button" id="btnAdminTwinUpsertSnapshot">Upsert twin snapshot</button>
+            <button type="button" id="btnAdminTwinGetSnapshot">Get twin snapshot</button>
+            <button type="button" id="btnAdminTwinAuthorize">Authorize from twin (expect 403)</button>
+            <button type="button" id="btnAdminBrainStatus">Brain status</button>
+            <button type="button" id="btnAdminBrainPublishInsight">Publish brain insight</button>
+            <button type="button" id="btnAdminBrainGetInsight">Get brain insight</button>
+            <button type="button" id="btnAdminBrainExecute">Execute brain insight (expect 403)</button>
+            <button type="button" id="btnAdminAiStatus">AI Runtime status</button>
+            <button type="button" id="btnAdminAiCreateRun">Create AI run</button>
+            <button type="button" id="btnAdminAiGetRun">Get AI run</button>
+            <button type="button" id="btnAdminAiRegisterTool">Register AI tool</button>
+            <button type="button" id="btnAdminAiInvokeTool">Invoke AI tool</button>
+            <button type="button" id="btnAdminAiWriteMemory">Write AI memory</button>
+            <button type="button" id="btnAdminAiReadMemory">Read AI memory</button>
+            <button type="button" id="btnAdminAiRequestApproval">Request AI approval</button>
+            <button type="button" id="btnAdminAiCommit">Commit AI action (approval-gated)</button>
+            <button type="button" id="btnAdminIdentityStatus">Identity status</button>
+            <button type="button" id="btnAdminIdentityRegisterSubject">Register identity subject</button>
+            <button type="button" id="btnAdminIdentityResolveSubject">Resolve identity subject</button>
+            <button type="button" id="btnAdminIdentityBindCredential">Bind identity credential</button>
+            <button type="button" id="btnAdminIdentityCreateSession">Create identity session</button>
+            <button type="button" id="btnAdminIdentityValidateSession">Validate identity session</button>
+            <button type="button" id="btnAdminIdentityValidateCredential">Validate identity credential</button>
+            <button type="button" id="btnAdminIdentityRevokeCredential">Revoke identity credential</button>
+            <button type="button" id="btnAdminIdentityRevokeSession">Revoke identity session</button>
+            <button type="button" id="btnAdminIdentityGrantGovernor">Grant platform identity governor</button>
+            <button type="button" id="btnAdminIdentityRevokeGovernor">Revoke platform identity governor</button>
+            <button type="button" id="btnAdminIdentityRegisterAi">Register AI employee</button>
+            <button type="button" id="btnAdminIdentityGetAiProfile">Get AI employee profile</button>
+            <button type="button" id="btnAdminIdentityUpdateAiProfile">Update AI employee profile</button>
+            <button type="button" id="btnAdminIdentityAssignAi">Assign AI employee to tenant</button>
+            <button type="button" id="btnAdminIdentityReassignAi">Reassign/archive AI employee</button>
+            <button type="button" id="btnAdminOrganizationStatus">Organization status</button>
+            <button type="button" id="btnAdminOrganizationGetTenant">Get organization tenant</button>
+            <button type="button" id="btnAdminOrganizationCreateEnterprise">Create enterprise</button>
+            <button type="button" id="btnAdminOrganizationListEnterprises">List enterprises</button>
+            <button type="button" id="btnAdminOrganizationGetEnterprise">Get enterprise</button>
+            <button type="button" id="btnAdminOrganizationUpsertUnit">Upsert organization unit</button>
+            <button type="button" id="btnAdminOrganizationUnitTree">Get organization unit tree</button>
+            <button type="button" id="btnAdminOrganizationAddMembership">Add membership</button>
+            <button type="button" id="btnAdminOrganizationListMemberships">List memberships</button>
+            <button type="button" id="btnAdminOrganizationSetUnitStatus">Set organization unit status</button>
+            <button type="button" id="btnAdminOrganizationSuspendMembership">Suspend membership</button>
+            <button type="button" id="btnAdminOrganizationReactivateMembership">Reactivate membership</button>
+            <button type="button" id="btnAdminOrganizationTransferMembership">Transfer membership unit</button>
+            <button type="button" id="btnAdminOrganizationEndMembership">End membership</button>
+            <button type="button" id="btnAdminOrganizationSuspendEnterprise">Suspend enterprise</button>
+            <button type="button" id="btnAdminOrganizationReactivateEnterprise">Reactivate enterprise</button>
+            <button type="button" id="btnAdminOrganizationCloseEnterprise">Close enterprise</button>
+            <button type="button" id="btnAdminPlatformCreateTenant">Create platform tenant</button>
+            <button type="button" id="btnAdminPlatformSuspendTenant">Suspend platform tenant</button>
+            <button type="button" id="btnAdminPlatformReactivateTenant">Reactivate platform tenant</button>
+            <button type="button" id="btnAdminTenantRoles">List tenant roles catalog</button>
+            <button type="button" id="btnAdminRolesStatus">Roles status</button>
+            <button type="button" id="btnAdminEvaluate">Evaluate permission</button>
+            <button type="button" id="btnAdminExplainDecision">Explain last decision</button>
+            <button type="button" id="btnAdminEffectivePerms">List effective permissions</button>
+            <button type="button" id="btnAdminPermissionCreatePolicy">Create permission policy</button>
+            <button type="button" id="btnAdminPermissionActivatePolicy">Activate permission policy</button>
+            <button type="button" id="btnAdminPermissionCreateGrant">Create permission grant</button>
+            <button type="button" id="btnAdminPermissionRevokeGrant">Revoke permission grant</button>
+            <button type="button" id="btnAdminPermissionDeprecatePolicy">Deprecate permission policy</button>
+            <button type="button" id="btnAdminPermissionDelegateGrant">Delegate permission grant</button>
+            <button type="button" id="btnAdminEventStats">Event delivery stats</button>
+            <button type="button" id="btnAdminEventCatalog">Event catalog (read)</button>
+            <button type="button" id="btnAdminDeadLetters">List dead letters</button>
+            <button type="button" id="btnAdminReplayDeadLetter">Replay dead letter</button>
+            <button type="button" id="btnAdminEventDispatch">Dispatch due events</button>
+            <button type="button" id="btnAdminEventGet">Get event</button>
+            <button type="button" id="btnAdminEventEnqueue">Enqueue outbox</button>
+            <button type="button" id="btnAdminEventPublish">Publish event</button>
+            <button type="button" id="btnAdminEventSubscribe">Subscribe event</button>
+            <button type="button" id="btnAdminEventReplay">Replay event</button>
+          </div>
+          <label>
+            Dead letter id (from list; for replay)
+            <input id="deadLetterId" type="text" placeholder="uuid" autocomplete="off" />
+          </label>
+          <label>
+            Event worker id (for dispatch)
+            <input id="eventWorkerId" type="text" placeholder="worker-1" autocomplete="off" />
+          </label>
+          <label>
+            Event dispatch limit (optional)
+            <input id="eventDispatchLimit" type="text" placeholder="32" autocomplete="off" />
+          </label>
+          <label>
+            Event id (for get; filled from publish when present)
+            <input id="eventId" type="text" placeholder="uuid" autocomplete="off" />
+          </label>
+          <label>
+            Event name
+            <input id="eventName" type="text" placeholder="crm.order.created" autocomplete="off" />
+          </label>
+          <label>
+            Event schema version
+            <input id="eventSchemaVersion" type="text" placeholder="1" autocomplete="off" />
+          </label>
+          <label>
+            Event producer
+            <input id="eventProducer" type="text" placeholder="pkg.crm" autocomplete="off" />
+          </label>
+          <label>
+            Event payload JSON
+            <textarea id="eventPayloadJson" rows="2" placeholder='{"order_id":"O-1"}'></textarea>
+          </label>
+          <label>
+            Event subscriber id
+            <input id="eventSubscriberId" type="text" placeholder="projection.orders" autocomplete="off" />
+          </label>
+          <label>
+            Event delivery URL (optional webhook; no signing secret in Terminal)
+            <input
+              id="eventDeliveryUrl"
+              type="url"
+              placeholder="https://hooks.example.com/orders"
+              autocomplete="off"
+            />
+          </label>
+          <label>
+            Marketplace listing id (from create; for get/lifecycle)
+            <input id="listingId" type="text" placeholder="uuid" autocomplete="off" />
+          </label>
+          <label>
+            Workflow definition id (from create; for start)
+            <input id="workflowDefinitionId" type="text" placeholder="uuid" autocomplete="off" />
+          </label>
+          <label>
+            Workflow definition name
+            <input id="workflowDefinitionName" type="text" placeholder="ops-approval" autocomplete="off" />
+          </label>
+          <label>
+            Workflow definition document ref
+            <input
+              id="workflowDefinitionDocRef"
+              type="text"
+              placeholder="docs/workflows/ops"
+              autocomplete="off"
+            />
+          </label>
+          <label>
+            Workflow definition version
+            <input id="workflowDefinitionVersion" type="text" placeholder="1.0" autocomplete="off" />
+          </label>
+          <label>
+            Workflow deprecate reason
+            <input id="workflowDeprecateReason" type="text" placeholder="retire definition" autocomplete="off" />
+          </label>
+          <label>
+            Workflow deprecate expected_version
+            <input id="workflowDeprecateExpectedVersion" type="text" placeholder="1" autocomplete="off" />
+          </label>
+          <label>
+            Workflow instance id (from start; for get)
+            <input id="workflowInstanceId" type="text" placeholder="uuid" autocomplete="off" />
+          </label>
+          <label>
+            Workflow instance payload JSON
+            <textarea id="workflowInstancePayload" rows="2" placeholder='{"action":"write"}'></textarea>
+          </label>
+          <label>
+            Workflow business key (optional)
+            <input id="workflowBusinessKey" type="text" placeholder="case-1" autocomplete="off" />
+          </label>
+          <label>
+            Workflow approval subject id (optional)
+            <input id="workflowApprovalSubjectId" type="text" placeholder="uuid" autocomplete="off" />
+          </label>
+          <label>
+            Workflow approval principal id (optional)
+            <input id="workflowApprovalPrincipalId" type="text" placeholder="uuid" autocomplete="off" />
+          </label>
+          <label>
+            Workflow approval action (optional)
+            <input id="workflowApprovalAction" type="text" placeholder="commit" autocomplete="off" />
+          </label>
+          <label>
+            Workflow approval resource ref (optional)
+            <input id="workflowApprovalResourceRef" type="text" placeholder="ledger:1" autocomplete="off" />
+          </label>
+          <label>
+            Workflow task assignee id (optional; list filter)
+            <input id="workflowTaskAssigneeId" type="text" placeholder="uuid" autocomplete="off" />
+          </label>
+          <label>
+            Workflow task status (optional; list filter)
+            <input id="workflowTaskStatus" type="text" placeholder="pending" autocomplete="off" />
+          </label>
+          <label>
+            Workflow task id (from start/list; for approve/reject)
+            <input id="workflowTaskId" type="text" placeholder="uuid" autocomplete="off" />
+          </label>
+          <label>
+            Workflow task comment (optional; approve)
+            <input id="workflowTaskComment" type="text" placeholder="ok" autocomplete="off" />
+          </label>
+          <label>
+            Workflow reject reason (required for reject)
+            <input id="workflowTaskRejectReason" type="text" placeholder="no" autocomplete="off" />
+          </label>
+          <label>
+            Workflow task expected version (optional)
+            <input id="workflowTaskExpectedVersion" type="text" placeholder="1" autocomplete="off" />
+          </label>
+          <label>
+            Workflow signal name (for signal)
+            <input id="workflowSignalName" type="text" placeholder="complete" autocomplete="off" />
+          </label>
+          <label>
+            Workflow signal idempotency key
+            <input id="workflowSignalIdempotencyKey" type="text" placeholder="complete-001" autocomplete="off" />
+          </label>
+          <label>
+            Workflow signal payload JSON (optional)
+            <textarea id="workflowSignalPayload" rows="2" placeholder='{"note":"done"}'></textarea>
+          </label>
+          <label>
+            Workflow cancel reason
+            <input id="workflowCancelReason" type="text" placeholder="abort" autocomplete="off" />
+          </label>
+          <label>
+            Workflow instance expected version (optional; signal/cancel/compensate)
+            <input id="workflowInstanceExpectedVersion" type="text" placeholder="1" autocomplete="off" />
+          </label>
+          <label>
+            Workflow compensate reason
+            <input id="workflowCompensateReason" type="text" placeholder="rollback" autocomplete="off" />
+          </label>
+          <label>
+            Workflow escalate to subject id
+            <input id="workflowEscalateToSubjectId" type="text" placeholder="uuid" autocomplete="off" />
+          </label>
+          <label>
+            Workflow escalate reason
+            <input id="workflowEscalateReason" type="text" placeholder="out of office" autocomplete="off" />
+          </label>
+          <label>
+            Package manifest id (from register; for get)
+            <input id="packageManifestId" type="text" placeholder="uuid" autocomplete="off" />
+          </label>
+          <label>
+            Package manifest JSON (for register)
+            <textarea
+              id="packageManifestJson"
+              rows="4"
+              placeholder='{"package_key":"noventi.sample.ops","version":"1.0.0","package_type":"industry","surfaces":[],"actions":[],"required_permissions":[],"declared_events":[]}'
+            ></textarea>
+          </label>
+          <label>
+            Package installation id (from install; for disable)
+            <input id="packageInstallationId" type="text" placeholder="uuid" autocomplete="off" />
+          </label>
+          <label>
+            Package action key (for resolve)
+            <input id="packageActionKey" type="text" placeholder="ops.brief.compose" autocomplete="off" />
+          </label>
+          <label>
+            Knowledge entity id (from upsert/list; for get)
+            <input id="knowledgeEntityId" type="text" placeholder="uuid" autocomplete="off" />
+          </label>
+          <label>
+            Knowledge entity type
+            <input id="knowledgeEntityType" type="text" placeholder="Capability" autocomplete="off" />
+          </label>
+          <label>
+            Knowledge entity name
+            <input id="knowledgeEntityName" type="text" placeholder="Billing" autocomplete="off" />
+          </label>
+          <label>
+            Knowledge entity layer
+            <input id="knowledgeEntityLayer" type="text" placeholder="canonical" autocomplete="off" />
+          </label>
+          <label>
+            Knowledge entity source ref
+            <input id="knowledgeEntitySourceRef" type="text" placeholder="docs/billing.md" autocomplete="off" />
+          </label>
+          <label>
+            Knowledge entity reason
+            <input id="knowledgeEntityReason" type="text" placeholder="seed" autocomplete="off" />
+          </label>
+          <label>
+            Knowledge entity labels (comma-separated, optional)
+            <input id="knowledgeEntityLabels" type="text" placeholder="finance" autocomplete="off" />
+          </label>
+          <label>
+            Knowledge entity attributes JSON (optional)
+            <textarea id="knowledgeEntityAttributes" rows="2" placeholder='{"tier":"core"}'></textarea>
+          </label>
+          <label>
+            Knowledge archive reason
+            <input id="knowledgeArchiveReason" type="text" placeholder="retire" autocomplete="off" />
+          </label>
+          <label>
+            Knowledge archive source ref (optional; falls back to entity source ref)
+            <input id="knowledgeArchiveSourceRef" type="text" placeholder="docs/archive.md" autocomplete="off" />
+          </label>
+          <label>
+            Knowledge share with subject id
+            <input id="knowledgeShareWithSubjectId" type="text" placeholder="uuid" autocomplete="off" />
+          </label>
+          <label>
+            Knowledge share reason
+            <input id="knowledgeShareReason" type="text" placeholder="collaborate" autocomplete="off" />
+          </label>
+          <label>
+            Knowledge share source ref (optional; falls back to entity source ref)
+            <input id="knowledgeShareSourceRef" type="text" placeholder="docs/share.md" autocomplete="off" />
+          </label>
+          <label>
+            Knowledge entity expected version (optional; archive/share)
+            <input id="knowledgeEntityExpectedVersion" type="text" placeholder="1" autocomplete="off" />
+          </label>
+          <label>
+            Knowledge search text
+            <input id="knowledgeSearchText" type="text" placeholder="bill" autocomplete="off" />
+          </label>
+          <label>
+            Knowledge link from entity id (optional; falls back to entity id)
+            <input id="knowledgeLinkFromId" type="text" placeholder="uuid" autocomplete="off" />
+          </label>
+          <label>
+            Knowledge link to entity id
+            <input id="knowledgeLinkToId" type="text" placeholder="uuid" autocomplete="off" />
+          </label>
+          <label>
+            Knowledge link relation type
+            <input id="knowledgeLinkRelationType" type="text" placeholder="depends_on" autocomplete="off" />
+          </label>
+          <label>
+            Knowledge link source ref (optional; falls back to entity source ref)
+            <input id="knowledgeLinkSourceRef" type="text" placeholder="docs/link.md" autocomplete="off" />
+          </label>
+          <label>
+            Knowledge link reason (optional; falls back to entity reason)
+            <input id="knowledgeLinkReason" type="text" placeholder="relate" autocomplete="off" />
+          </label>
+          <label>
+            Knowledge link id (from create)
+            <input id="knowledgeLinkId" type="text" placeholder="uuid" autocomplete="off" />
+          </label>
+          <label>
+            Knowledge provenance subject kind
+            <input id="knowledgeProvenanceKind" type="text" placeholder="entity" autocomplete="off" />
+          </label>
+          <label>
+            Knowledge provenance subject id (optional; falls back to entity id)
+            <input id="knowledgeProvenanceSubjectId" type="text" placeholder="uuid" autocomplete="off" />
+          </label>
+          <label>
+            Twin snapshot id (from upsert; for get)
+            <input id="twinSnapshotId" type="text" placeholder="uuid" autocomplete="off" />
+          </label>
+          <label>
+            Twin entity ref
+            <input id="twinEntityRef" type="text" placeholder="plant:1" autocomplete="off" />
+          </label>
+          <label>
+            Twin source ref
+            <input id="twinSourceRef" type="text" placeholder="sensor:a" autocomplete="off" />
+          </label>
+          <label>
+            Twin reason
+            <input id="twinReason" type="text" placeholder="sync" autocomplete="off" />
+          </label>
+          <label>
+            Twin confidence
+            <input id="twinConfidence" type="text" placeholder="0.85" autocomplete="off" />
+          </label>
+          <label>
+            Twin state JSON (optional)
+            <textarea id="twinStateJson" rows="2" placeholder='{"throughput":10}'></textarea>
+          </label>
+          <label>
+            Brain insight id (from publish; for get)
+            <input id="brainInsightId" type="text" placeholder="uuid" autocomplete="off" />
+          </label>
+          <label>
+            Brain kind
+            <input id="brainKind" type="text" placeholder="recommendation" autocomplete="off" />
+          </label>
+          <label>
+            Brain summary
+            <input id="brainSummary" type="text" placeholder="Reduce load" autocomplete="off" />
+          </label>
+          <label>
+            Brain source ref
+            <input id="brainSourceRef" type="text" placeholder="model:v1" autocomplete="off" />
+          </label>
+          <label>
+            Brain reason
+            <input id="brainReason" type="text" placeholder="advisory" autocomplete="off" />
+          </label>
+          <label>
+            Brain confidence
+            <input id="brainConfidence" type="text" placeholder="0.6" autocomplete="off" />
+          </label>
+          <label>
+            Brain twin ref (optional; falls back to twin snapshot id)
+            <input id="brainTwinRef" type="text" placeholder="uuid" autocomplete="off" />
+          </label>
+          <label>
+            AI run id (from create; for get)
+            <input id="aiRunId" type="text" placeholder="uuid" autocomplete="off" />
+          </label>
+          <label>
+            AI run goal
+            <input id="aiRunGoal" type="text" placeholder="Draft invoice" autocomplete="off" />
+          </label>
+          <label>
+            AI run plan summary (optional)
+            <input id="aiRunPlanSummary" type="text" placeholder="read then commit" autocomplete="off" />
+          </label>
+          <label>
+            AI tool name
+            <input id="aiToolName" type="text" placeholder="ledger.read" autocomplete="off" />
+          </label>
+          <label>
+            AI tool description
+            <input id="aiToolDescription" type="text" placeholder="Read ledger" autocomplete="off" />
+          </label>
+          <label>
+            AI tool high impact
+            <input id="aiToolHighImpact" type="checkbox" />
+          </label>
+          <label>
+            AI tool arguments JSON (optional; for invoke)
+            <textarea id="aiToolArgumentsJson" rows="2" placeholder='{"account":"A-1"}'></textarea>
+          </label>
+          <label>
+            AI memory key
+            <input id="aiMemoryKey" type="text" placeholder="draft" autocomplete="off" />
+          </label>
+          <label>
+            AI memory value JSON (for write)
+            <textarea id="aiMemoryValueJson" rows="2" placeholder='{"amount":10}'></textarea>
+          </label>
+          <label>
+            AI approval definition id (optional; falls back to workflow definition id)
+            <input id="aiApprovalDefinitionId" type="text" placeholder="uuid" autocomplete="off" />
+          </label>
+          <label>
+            AI approval subject id (optional; falls back to Approver / Subject)
+            <input id="aiApprovalSubjectId" type="text" placeholder="uuid" autocomplete="off" />
+          </label>
+          <label>
+            AI commit / approval action
+            <input id="aiCommitAction" type="text" placeholder="invoice.adjust" autocomplete="off" />
+          </label>
+          <label>
+            AI commit / approval resource ref
+            <input id="aiCommitResourceRef" type="text" placeholder="ai_run:uuid" autocomplete="off" />
+          </label>
+          <label>
+            Identity subject id (from register; for resolve)
+            <input id="identitySubjectId" type="text" placeholder="uuid" autocomplete="off" />
+          </label>
+          <label>
+            Identity subject type
+            <input id="identitySubjectType" type="text" placeholder="human" autocomplete="off" />
+          </label>
+          <label>
+            Identity display name
+            <input id="identityDisplayName" type="text" placeholder="Ada" autocomplete="off" />
+          </label>
+          <label>
+            Identity credential id (from bind; for session)
+            <input id="identityCredentialId" type="text" placeholder="uuid" autocomplete="off" />
+          </label>
+          <label>
+            Identity credential kind
+            <input id="identityCredentialKind" type="text" placeholder="password_hash" autocomplete="off" />
+          </label>
+          <label>
+            Identity secret handle (vault ref; not a raw secret)
+            <input id="identitySecretHandle" type="text" placeholder="vault:ref/demo" autocomplete="off" />
+          </label>
+          <label>
+            Identity session id (from create; for validate)
+            <input id="identitySessionId" type="text" placeholder="uuid" autocomplete="off" />
+          </label>
+          <label>
+            Identity session ttl minutes (optional)
+            <input id="identitySessionTtlMinutes" type="text" placeholder="30" autocomplete="off" />
+          </label>
+          <label>
+            Identity revoke reason (credential/session/governor revoke)
+            <input id="identityRevokeReason" type="text" placeholder="operator revoke" autocomplete="off" />
+          </label>
+          <label>
+            Identity governor subject id (grant/revoke target)
+            <input id="identityGovernorSubjectId" type="text" placeholder="uuid" autocomplete="off" />
+          </label>
+          <label>
+            AI employee subject id (from register)
+            <input id="identityAiSubjectId" type="text" placeholder="uuid" autocomplete="off" />
+          </label>
+          <label>
+            AI display name
+            <input id="identityAiDisplayName" type="text" placeholder="Ops Assistant" autocomplete="off" />
+          </label>
+          <label>
+            AI capabilities profile ref
+            <input id="identityAiCapabilitiesProfile" type="text" placeholder="default" autocomplete="off" />
+          </label>
+          <label>
+            AI owner policy ref
+            <input id="identityAiOwnerPolicy" type="text" placeholder="platform" autocomplete="off" />
+          </label>
+          <label>
+            AI profile expected version (update)
+            <input id="identityAiProfileVersion" type="text" placeholder="1" autocomplete="off" />
+          </label>
+          <label>
+            AI reassignment mode (reassign|inherit|archive)
+            <input id="identityAiReassignMode" type="text" placeholder="archive" autocomplete="off" />
+          </label>
+          <label>
+            AI reassignment to_tenant_id (required unless archive)
+            <input id="identityAiToTenantId" type="text" placeholder="uuid" autocomplete="off" />
+          </label>
+          <label>
+            Organization enterprise id (from create/list)
+            <input id="orgEnterpriseId" type="text" placeholder="uuid" autocomplete="off" />
+          </label>
+          <label>
+            Organization enterprise legal name
+            <input id="orgEnterpriseLegalName" type="text" placeholder="Secondary Ops" autocomplete="off" />
+          </label>
+          <label>
+            Platform tenant legal name (create; platform plane)
+            <input id="platformTenantLegalName" type="text" placeholder="Acme Holdings" autocomplete="off" />
+          </label>
+          <label>
+            Platform tenant region policy ref (optional)
+            <input id="platformTenantRegionPolicyRef" type="text" placeholder="region:eu" autocomplete="off" />
+          </label>
+          <label>
+            Organization unit id (upsert/tree/status; also transfer to_org_unit_id)
+            <input id="orgUnitId" type="text" placeholder="uuid" autocomplete="off" />
+          </label>
+          <label>
+            Organization unit type
+            <input id="orgUnitType" type="text" placeholder="department" autocomplete="off" />
+          </label>
+          <label>
+            Organization unit name
+            <input id="orgUnitName" type="text" placeholder="Finance" autocomplete="off" />
+          </label>
+          <label>
+            Organization parent unit id (optional)
+            <input id="orgParentUnitId" type="text" placeholder="uuid" autocomplete="off" />
+          </label>
+          <label>
+            Organization membership id (from add/list)
+            <input id="orgMembershipId" type="text" placeholder="uuid" autocomplete="off" />
+          </label>
+          <label>
+            Organization membership subject id (optional; falls back to Subject)
+            <input id="orgMembershipSubjectId" type="text" placeholder="uuid" autocomplete="off" />
+          </label>
+          <label>
+            Organization membership role label (optional)
+            <input id="orgMembershipRoleLabel" type="text" placeholder="member" autocomplete="off" />
+          </label>
+          <label>
+            Organization unit status (for set status)
+            <input id="orgUnitStatus" type="text" placeholder="inactive" autocomplete="off" />
+          </label>
+          <label>
+            Organization lifecycle reason
+            <input id="orgLifecycleReason" type="text" placeholder="empty" autocomplete="off" />
+          </label>
+          <label>
+            Organization expected version (optional)
+            <input id="orgExpectedVersion" type="text" placeholder="1" autocomplete="off" />
+          </label>
+          <label>
+            Listing signature ref (for attach)
+            <input id="listingSignatureRef" type="text" placeholder="sig:ed25519:demo" autocomplete="off" />
+          </label>
+          <label>
+            Listing package key
+            <input id="listingPackageKey" type="text" placeholder="noventi.demo.ops" autocomplete="off" />
+          </label>
+          <label>
+            Listing package version
+            <input id="listingPackageVersion" type="text" placeholder="1.0.0" autocomplete="off" />
+          </label>
+          <label>
+            Listing data scope
+            <input id="listingDataScope" type="text" placeholder="tenant.ops" autocomplete="off" />
+          </label>
+          <label>
+            Listing required permissions (comma-separated)
+            <input
+              id="listingRequiredPermissions"
+              type="text"
+              placeholder="pkg.ops.brief:compose"
+              autocomplete="off"
+            />
+          </label>
+          <label>
+            Listing declared events (comma-separated)
+            <input
+              id="listingDeclaredEvents"
+              type="text"
+              placeholder="pkg.ops.brief.composed"
+              autocomplete="off"
+            />
+          </label>
+          <label>
+            Listing price (Foundation fixed pricing)
+            <input id="listingPrice" type="text" placeholder="9.99" autocomplete="off" />
+          </label>
+          <label>
+            Listing currency (optional; default CNY)
+            <input id="listingCurrency" type="text" placeholder="CNY" autocomplete="off" />
+          </label>
+          <label>
+            Listing invoice id (from create invoice; for G162 payment clearing)
+            <input id="listingInvoiceId" type="text" placeholder="uuid" autocomplete="off" />
+          </label>
+          <label>
+            Listing dispute reason
+            <input id="listingDisputeReason" type="text" placeholder="delivery issue" autocomplete="off" />
+          </label>
+          <label>
+            Listing dispute id (from open)
+            <input id="listingDisputeId" type="text" placeholder="uuid" autocomplete="off" />
+          </label>
+          <label>
+            Listing dispute resolution
+            <input id="listingDisputeResolution" type="text" placeholder="resolved by publisher" autocomplete="off" />
+          </label>
+          <label>
+            Listing platform_share_bps (0–5000)
+            <input id="listingRevenueShareBps" type="text" placeholder="2000" autocomplete="off" />
+          </label>
+          <label>
+            Evaluate resource type
+            <input id="evalResourceType" type="text" placeholder="document" autocomplete="off" />
+          </label>
+          <label>
+            Evaluate action
+            <input id="evalAction" type="text" placeholder="read" autocomplete="off" />
+          </label>
+          <label>
+            Evaluate resource id (optional)
+            <input id="evalResourceId" type="text" placeholder="uuid" autocomplete="off" />
+          </label>
+          <label>
+            Decision id (from evaluate; for explain)
+            <input id="evalDecisionId" type="text" placeholder="uuid" autocomplete="off" />
+          </label>
+          <label>
+            Effective principal subject id (path only; defaults to Subject)
+            <input id="effectivePrincipalId" type="text" placeholder="subject uuid" autocomplete="off" />
+          </label>
+          <label>
+            Permission policy name
+            <input id="permPolicyName" type="text" placeholder="deny-read" autocomplete="off" />
+          </label>
+          <label>
+            Permission policy version (optional)
+            <input id="permPolicyVersion" type="text" placeholder="1" autocomplete="off" />
+          </label>
+          <label>
+            Permission policy effect (for create rule)
+            <input id="permPolicyEffect" type="text" placeholder="deny" autocomplete="off" />
+          </label>
+          <label>
+            Permission scope level (policy rule / grant)
+            <input id="permScopeLevel" type="text" placeholder="tenant" autocomplete="off" />
+          </label>
+          <label>
+            Permission policy id (from create; for activate)
+            <input id="permPolicyId" type="text" placeholder="uuid" autocomplete="off" />
+          </label>
+          <label>
+            Permission grant id (from create; for revoke)
+            <input id="permGrantId" type="text" placeholder="uuid" autocomplete="off" />
+          </label>
+          <label>
+            Permission reason (revoke / deprecate)
+            <input id="permRevokeReason" type="text" placeholder="cleanup" autocomplete="off" />
+          </label>
+          <label>
+            Permission grant delegable (optional; true/false)
+            <input id="permGrantDelegable" type="text" placeholder="true" autocomplete="off" />
+          </label>
+          <label>
+            Permission grant delegation depth (optional)
+            <input id="permGrantDelegationDepth" type="text" placeholder="1" autocomplete="off" />
+          </label>
+          <label>
+            Permission delegatee principal id
+            <input id="permDelegateePrincipalId" type="text" placeholder="subject uuid" autocomplete="off" />
+          </label>
+          <label>
+            Permission expected version (activate/revoke/deprecate/delegate)
+            <input id="permExpectedVersion" type="text" placeholder="1" autocomplete="off" />
+          </label>
+          <div class="button-row">
+            <button type="button" id="btnAdminIdpList">List IdP issuers</button>
+            <button type="button" id="btnAdminIdpRegister">Register IdP issuer</button>
+            <button type="button" id="btnAdminIdpDisable">Disable IdP issuer</button>
+            <button type="button" id="btnAdminIdpDiscoverySync">Discovery sync</button>
+          </div>
+          <label>
+            Issuer URL
+            <input id="idpIssuer" type="url" placeholder="https://idp.example/eaos" autocomplete="off" />
+          </label>
+          <label>
+            JWKS URL
+            <input id="idpJwksUrl" type="url" placeholder="https://idp.example/jwks" autocomplete="off" />
+          </label>
+          <label>
+            JWKS JSON (optional; leave empty when JWKS URL is set)
+            <textarea id="idpJwksJson" rows="2" placeholder="optional JWKS document JSON"></textarea>
+          </label>
+          <label>
+            Issuer id (from list; for disable)
+            <input id="idpIssuerId" type="text" placeholder="uuid" autocomplete="off" />
+          </label>
+          <div class="button-row">
+            <button type="button" id="btnAdminRoleList">List declared roles</button>
+            <button type="button" id="btnAdminRoleUpsert">Upsert declared role</button>
+            <button type="button" id="btnAdminRoleDisable">Disable declared role</button>
+          </div>
+          <label>
+            Declared role name
+            <input id="roleCatalogName" type="text" placeholder="operator" autocomplete="off" />
+          </label>
+          <label>
+            Declared role id (from list; for disable)
+            <input id="roleCatalogId" type="text" placeholder="uuid" autocomplete="off" />
+          </label>
+          <div class="button-row">
+            <button type="button" id="btnAdminFedMatrix">Federation matrix</button>
+            <button type="button" id="btnAdminFedList">List federation bindings</button>
+            <button type="button" id="btnAdminFedBind">Bind federation issuer</button>
+            <button type="button" id="btnAdminFedUnbind">Unbind federation</button>
+            <button type="button" id="btnAdminFedPriority">Set federation priority</button>
+          </div>
+          <label>
+            Federation tenant id (path only; not body)
+            <input id="fedTenantId" type="text" placeholder="tenant uuid" autocomplete="off" />
+          </label>
+          <label>
+            Federation issuer URL
+            <input id="fedIssuer" type="url" placeholder="https://idp.example/eaos" autocomplete="off" />
+          </label>
+          <label>
+            Binding id (from list; for unbind / priority)
+            <input id="fedBindingId" type="text" placeholder="uuid" autocomplete="off" />
+          </label>
+          <label>
+            Federation priority (lower preferred; default 100)
+            <input id="fedPriority" type="number" min="0" step="1" placeholder="100" autocomplete="off" />
+          </label>
+          <pre id="adminView" class="panel-pre">Select an admin probe, IdP registry, or federation action.</pre>
+        </div>
+      </section>
+
+      <section
+        class="surface-panel"
+        data-surface-panel="ai"
+        aria-label="AI collaboration"
+        hidden
+      >
+        <div class="stage">
+          <h2>AI Collaboration</h2>
+          <p class="stage-note">
+            协作布局复用 Terminal 生命周期；Agent 执行仍归 AI Runtime，不经壳旁路。
+          </p>
+          <label>
+            Collaboration note
+            <textarea id="aiNote" rows="3" placeholder="Intent framing for digital employee"></textarea>
+          </label>
+          <div class="button-row">
+            <button type="button" id="btnAiApplyNote">Apply note to intent</button>
+            <button type="button" id="btnAiCompose" disabled>Compose from note</button>
+          </div>
+          <pre id="aiView" class="panel-pre">Frame an intent, then compose via Terminal API.</pre>
+        </div>
+      </section>
+
+      <section
+        class="surface-panel"
+        data-surface-panel="extensions"
+        aria-label="Extension host"
+        hidden
+      >
+        <div class="stage">
+          <h2>Extension Host</h2>
+          <p class="stage-note">
+            Signed host（PHX-G169 / G182）：demo bootstrap 预激活 HMAC 扩展后可直接 Hydrate → Mount →
+            Invoke；Extensions 面板提供 allowlisted Acquire → Host 与 readiness，无需跳 Admin。
+            首方 iframe/Worker + CSP + 桥接；不执行 Marketplace 任意脚本，不可隐藏审批。
+          </p>
+          <p id="extHostPathReadiness" class="stage-note" aria-live="polite">
+            Host-path readiness not loaded.
+          </p>
+          <p id="extHostActions" class="stage-note" aria-live="polite">
+            host_actions: —
+          </p>
+          <p id="extHostStatus" class="stage-note" aria-live="polite">
+            No signed extension hydrated.
+          </p>
+          <div class="button-row">
+            <button type="button" id="btnExtHydrate">Hydrate signed</button>
+            <button type="button" id="btnExtHostAcquire">Acquire → Host</button>
+            <button type="button" id="btnExtHostPathReadiness">Refresh readiness</button>
+          </div>
+          <label>
+            Extension key
+            <input id="extKey" autocomplete="off" spellcheck="false" value="noventi.demo.panel" />
+          </label>
+          <label>
+            Version
+            <input id="extVersion" autocomplete="off" value="1.0.0" />
+          </label>
+          <label>
+            Signature ref
+            <input id="extSignature" autocomplete="off" value="sig:demo:ext" />
+          </label>
+          <label>
+            Data scope
+            <input id="extScope" autocomplete="off" value="tenant.demo" />
+          </label>
+          <div class="button-row">
+            <button type="button" id="btnExtRegister">Register</button>
+            <button type="button" id="btnExtList">Refresh list</button>
+            <button type="button" id="btnExtActivate" disabled>Activate</button>
+            <button type="button" id="btnExtMount" disabled>Mount iframe</button>
+            <button type="button" id="btnExtWorker" disabled>Start worker</button>
+            <button type="button" id="btnExtInvoke" disabled>Invoke panel.render</button>
+            <button type="button" id="btnExtRevoke" disabled>Revoke</button>
+          </div>
+          <div class="ext-frame-host" id="extFrameHost" hidden>
+            <iframe
+              id="extFrame"
+              class="ext-frame"
+              title="Extension sandbox panel"
+              sandbox="allow-scripts"
+              referrerpolicy="no-referrer"
+            ></iframe>
+          </div>
+          <pre id="extView" class="panel-pre">No extensions loaded.</pre>
+        </div>
+      </section>
+
+      <aside class="timeline" aria-live="polite">
+        <h2>Audit / event timeline</h2>
+        <pre id="log" class="log"></pre>
+      </aside>
+    </main>
+    <script src="/terminal/app.js?v=crm-g525-return-authorization-1" type="module"></script>
+  </body>
+</html>

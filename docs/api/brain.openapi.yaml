@@ -1,0 +1,692 @@
+openapi: 3.1.0
+info:
+  title: NOVENTI EAOS Enterprise Brain & Digital Twin API
+  version: 1.0.11
+  description: |
+    PHX-G388 Twin sync thin honesty (no continuous sync daemon; sync_mode=
+    snapshot_upsert; commercial_auto_write=false).
+    PHX-G389 Brain confidence/bias honesty (confidence required on insights;
+    confidence does not drive execution; commercial_auto_write=false).
+    PHX-G335 opens Brain execute / Twin authorize as Permission-gated surfaces
+    (200 when ALLOW; 403 + stable FORBIDDEN codes when denied). Status fences
+    report permission_gated. Z3 advisory remains execution_authority none.
+    PHX-G272 closes Brain/Twin outer schemas (state remains free-form).
+    PHX-E15 advisory intelligence contract. Cap→grant and silent commercial
+    auto-writes remain out of scope. Security context is derived by the trusted
+    authentication boundary.
+servers:
+  - url: /v1
+security:
+  - bearerAuth: []
+paths:
+  /twin/status:
+    get:
+      operationId: getTwinStatus
+      summary: Read-only Foundation status posture
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Twin Foundation status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TwinStatusEnvelope"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /brain/status:
+    get:
+      operationId: getBrainStatus
+      summary: Read-only Foundation status posture
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Brain Foundation status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrainStatusEnvelope"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /twin/snapshots:
+    post:
+      operationId: upsertTwinSnapshot
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertTwinSnapshotRequest"
+      responses:
+        "201":
+          description: Twin snapshot upserted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UuidResult"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid snapshot (provenance/confidence)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "403":
+          description: Twin secret denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Twin conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Twin service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /twin/snapshots/{snapshotId}:
+    get:
+      operationId: getTwinSnapshot
+      parameters:
+        - $ref: "#/components/parameters/SnapshotId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Twin snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TwinSnapshot"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Twin snapshot not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Twin service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /twin/snapshots/{snapshotId}/authorize:
+    post:
+      operationId: authorizeFromTwin
+      summary: Permission-gated Twin authorize (PHX-G335)
+      parameters:
+        - $ref: "#/components/parameters/SnapshotId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Authorize allowed by Permission Evaluate
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthorizedResult"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "403":
+          description: >
+            Permission deny or ineligible (PHX-G335). Stable code
+            TWIN_EXECUTION_FORBIDDEN. No commercial side effects.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Twin snapshot not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Twin service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /brain/insights:
+    post:
+      operationId: publishBrainInsight
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublishInsightRequest"
+      responses:
+        "201":
+          description: Advisory insight published
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UuidResult"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid insight (provenance/confidence)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "403":
+          description: Brain secret denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Insight conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Brain service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /brain/insights/{insightId}:
+    get:
+      operationId: getBrainInsight
+      parameters:
+        - $ref: "#/components/parameters/InsightId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Brain insight
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrainInsight"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Brain insight not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Brain service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /brain/insights/{insightId}/execute:
+    post:
+      operationId: requestBrainExecution
+      summary: Permission-gated Brain execute (PHX-G335)
+      parameters:
+        - $ref: "#/components/parameters/InsightId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Execute allowed by Permission Evaluate
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthorizedResult"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "403":
+          description: >
+            Permission deny or ineligible (PHX-G335). Stable code
+            BRAIN_EXECUTION_FORBIDDEN. No commercial side effects in this slice.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Brain insight not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Brain service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    CorrelationId:
+      name: X-Correlation-Id
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    SnapshotId:
+      name: snapshotId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    InsightId:
+      name: insightId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    TwinStatusEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/TwinStatusData"
+    TwinStatusData:
+      type: object
+      additionalProperties: false
+      description: >
+        PHX-G335 Twin status plus PHX-G388 sync thin honesty. No continuous
+        sync daemon; snapshots upsert is the sync surface; no commercial
+        auto-write.
+      required:
+        - writable
+        - authorize_execution
+        - supported_surfaces
+        - continuous_sync_daemon
+        - sync_mode
+        - commercial_auto_write
+      properties:
+        writable:
+          type: boolean
+          const: false
+        authorize_execution:
+          type: string
+          const: permission_gated
+        supported_surfaces:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          minItems: 1
+        continuous_sync_daemon:
+          type: boolean
+          const: false
+        sync_mode:
+          type: string
+          const: snapshot_upsert
+        commercial_auto_write:
+          type: boolean
+          const: false
+    BrainStatusEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/BrainStatusData"
+    BrainStatusData:
+      type: object
+      additionalProperties: false
+      description: >
+        PHX-G335 Brain status plus PHX-G389 confidence/bias honesty.
+        Confidence/bias live on insight payloads; confidence never drives
+        execution; no commercial auto-write.
+      required:
+        - writable
+        - execute_execution
+        - advisory_required
+        - supported_surfaces
+        - confidence_field_required
+        - bias_notes_surface
+        - confidence_drives_execution
+        - commercial_auto_write
+      properties:
+        writable:
+          type: boolean
+          const: false
+        execute_execution:
+          type: string
+          const: permission_gated
+        advisory_required:
+          type: boolean
+          const: true
+        supported_surfaces:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          minItems: 1
+        confidence_field_required:
+          type: boolean
+          const: true
+        bias_notes_surface:
+          type: string
+          const: insight_payload
+        confidence_drives_execution:
+          type: boolean
+          const: false
+        commercial_auto_write:
+          type: boolean
+          const: false
+    AuthorizedData:
+      type: object
+      additionalProperties: false
+      required: [authorized]
+      properties:
+        authorized:
+          type: boolean
+          const: true
+    AuthorizedResult:
+      type: object
+      additionalProperties: false
+      required: [data]
+      description: Closed success envelope for Brain execute / Twin authorize (PHX-G335).
+      properties:
+        data:
+          $ref: "#/components/schemas/AuthorizedData"
+        audit_id:
+          type: string
+          format: uuid
+          nullable: true
+    UuidResult:
+      type: object
+      additionalProperties: false
+      required: [id, data]
+      description: >
+        Unified UuidResult dialect (PHX-G170): `id` and `data` carry the same
+        UUID for backward-compatible clients of either pre-unification shape.
+      properties:
+        id:
+          type: string
+          format: uuid
+        data:
+          type: string
+          format: uuid
+        audit_id:
+          type: string
+          format: uuid
+    UpsertTwinSnapshotRequest:
+      type: object
+      additionalProperties: false
+      required: [entity_ref, state, source_ref, reason, confidence]
+      properties:
+        entity_ref:
+          type: string
+          minLength: 1
+        state:
+          type: object
+          additionalProperties: true
+        source_ref:
+          type: string
+          minLength: 1
+        reason:
+          type: string
+          minLength: 1
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        valid_from:
+          type: string
+          format: date-time
+          nullable: true
+        valid_until:
+          type: string
+          format: date-time
+          nullable: true
+    PublishInsightRequest:
+      type: object
+      additionalProperties: false
+      required: [kind, summary, confidence, source_ref, reason]
+      properties:
+        kind:
+          type: string
+          enum: [insight, recommendation, simulation]
+        summary:
+          type: string
+          minLength: 1
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        source_ref:
+          type: string
+          minLength: 1
+        reason:
+          type: string
+          minLength: 1
+        bias_notes:
+          type: string
+        twin_ref:
+          type: string
+          format: uuid
+          nullable: true
+        knowledge_refs:
+          type: array
+          items:
+            type: string
+        details:
+          description: >
+            Optional structured denial context (G202/G204/G216/G220). Known
+            elevation shape is composed via anyOf $ref to
+            ContextElevationDenialDetails; residual object allows other keys.
+          anyOf:
+            - $ref: "#/components/schemas/ContextElevationDenialDetails"
+            - type: object
+              additionalProperties: true
+        advisory:
+          type: boolean
+          default: true
+          description: Must be true; false is rejected
+    TwinSnapshot:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - entity_ref
+        - state
+        - source_ref
+        - reason
+        - confidence
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+        entity_ref:
+          type: string
+        state:
+          type: object
+          additionalProperties: true
+        source_ref:
+          type: string
+        reason:
+          type: string
+        confidence:
+          type: number
+        status:
+          type: string
+          enum: [active, superseded, archived]
+        version:
+          type: integer
+          minimum: 1
+    BrainInsight:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - kind
+        - summary
+        - confidence
+        - source_ref
+        - reason
+        - advisory
+      properties:
+        id:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          enum: [insight, recommendation, simulation]
+        summary:
+          type: string
+        confidence:
+          type: number
+        source_ref:
+          type: string
+        reason:
+          type: string
+        advisory:
+          type: boolean
+          const: true
+        bias_notes:
+          type: string
+        twin_ref:
+          type: string
+          format: uuid
+          nullable: true
+        knowledge_refs:
+          type: array
+          items:
+            type: string
+        version:
+          type: integer
+          minimum: 1
+    ContextElevationDenialDetails:
+      type: object
+      additionalProperties: false
+      description: >
+        Known details shape for code TERMINAL_CONTEXT_ELEVATION_DENIED
+        (live /context/echo elevation deny). PHX-G208/G220 per-code honesty;
+        other error codes may use different details keys.
+      required: [fields]
+      properties:
+        fields:
+          type: array
+          items:
+            type: string
+          description: Sorted denied elevation field names.
+    ErrorBody:
+      type: object
+      additionalProperties: false
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          description: >
+            Optional structured denial context (G202/G204/G216/G220). Known
+            elevation shape is composed via anyOf $ref to
+            ContextElevationDenialDetails; residual object allows other keys.
+          anyOf:
+            - $ref: "#/components/schemas/ContextElevationDenialDetails"
+            - type: object
+              additionalProperties: true
+    ValidationErrorItem:
+      type: object
+      description: FastAPI/Pydantic request validation error item.
+      required: [loc, msg, type]
+      additionalProperties: true
+      properties:
+        loc:
+          type: array
+          items:
+            oneOf:
+              - type: string
+              - type: integer
+        msg:
+          type: string
+        type:
+          type: string
+    HTTPValidationError:
+      type: object
+      description: FastAPI request validation envelope (422 detail list).
+      additionalProperties: false
+      required: [detail]
+      properties:
+        detail:
+          type: array
+          items:
+            $ref: "#/components/schemas/ValidationErrorItem"
+    GatewayDetailError:
+      type: object
+      additionalProperties: false
+      required: [detail]
+      properties:
+        detail:
+          $ref: "#/components/schemas/ErrorBody"
+  responses:
+    KernelError:
+      description: FastAPI HTTPException detail envelope (PHX-G164)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/GatewayDetailError"

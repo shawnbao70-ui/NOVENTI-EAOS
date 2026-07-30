@@ -1,0 +1,83 @@
+{
+  "package_key": "noventi.sample.ops",
+  "version": "1.1.0",
+  "package_type": "industry",
+  "surfaces": [
+    {
+      "surface_key": "ops.workbench",
+      "title": "Operations Workbench",
+      "description": "Sample industry surface for PHX-B14"
+    },
+    {
+      "surface_key": "ops.order",
+      "title": "订单流程（演示）",
+      "description": "Knowledge-aligned SO convert → approve → DO → fulfill handoff (Terminal demo only; not Legacy CRUD)"
+    }
+  ],
+  "actions": [
+    {
+      "action_key": "ops.brief.compose",
+      "resource_type": "pkg.ops.brief",
+      "permission_action": "compose",
+      "high_impact": false,
+      "surface_key": "ops.workbench",
+      "description": "Compose an operations brief"
+    },
+    {
+      "action_key": "ops.brief.publish",
+      "resource_type": "pkg.ops.brief",
+      "permission_action": "publish",
+      "high_impact": true,
+      "surface_key": "ops.workbench",
+      "description": "Publish an operations brief"
+    },
+    {
+      "action_key": "order.convert.compose",
+      "resource_type": "pkg.order.flow",
+      "permission_action": "compose",
+      "high_impact": false,
+      "surface_key": "ops.order",
+      "description": "Demo: compose quote → SO convert intent"
+    },
+    {
+      "action_key": "order.approve.compose",
+      "resource_type": "pkg.order.flow",
+      "permission_action": "compose",
+      "high_impact": true,
+      "surface_key": "ops.order",
+      "description": "Demo: compose V18 SO approve → Open intent (high impact)"
+    },
+    {
+      "action_key": "order.do.create",
+      "resource_type": "pkg.order.flow",
+      "permission_action": "create",
+      "high_impact": false,
+      "surface_key": "ops.order",
+      "description": "Demo: compose create Delivery Order intent (stock not decremented at create)"
+    },
+    {
+      "action_key": "order.fulfill.compose",
+      "resource_type": "pkg.order.flow",
+      "permission_action": "compose",
+      "high_impact": false,
+      "surface_key": "ops.order",
+      "description": "Demo: compose fulfillment / ship-complete review intent"
+    }
+  ],
+  "required_permissions": [
+    {
+      "resource_type": "pkg.ops.brief",
+      "actions": ["compose", "publish"]
+    },
+    {
+      "resource_type": "pkg.order.flow",
+      "actions": ["compose", "create"]
+    }
+  ],
+  "declared_events": [
+    "pkg.ops.brief.composed",
+    "pkg.ops.brief.published",
+    "pkg.order.flow.composed",
+    "pkg.order.flow.created"
+  ]
+}

@@ -1,0 +1,33 @@
+{{- if and .Values.mesh.authz.enabled (not .Values.mesh.enabled) }}
+{{- fail "PHX-G73: mesh.authz.enabled requires mesh.enabled=true" }}
+{{- end }}
+{{- if and .Values.mesh.enabled .Values.mesh.authz.enabled }}
+{{- if ne .Values.mesh.authz.vendor "istio" }}
+{{- fail "PHX-G73: mesh.authz.vendor must be istio (Foundation)" }}
+{{- end }}
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: {{ include "eaos.gateway.fullname" . }}-authz
+  labels:
+    {{- include "eaos.labels" . | nindent 4 }}
+    app.kubernetes.io/component: gateway
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "eaos.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: gateway
+  action: {{ .Values.mesh.authz.action | default "ALLOW" | quote }}
+  rules:
+    - from:
+        - source:
+            principals:
+              - "*"
+      to:
+        - operation:
+            paths:
+              {{- range (.Values.mesh.authz.paths | default (list "*")) }}
+              - {{ . | quote }}
+              {{- end }}
+{{- end }}

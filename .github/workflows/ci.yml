@@ -1,0 +1,66 @@
+# PHX-G410 — minimum CI (remediation). Protected-branch settings are a human PO click.
+name: eaos-ci
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+
+jobs:
+  contracts-pr:
+    name: pr_required (${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install (frozen constraints)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[persistence,api,dev]" -c constraints/production.txt
+          pip check
+      - name: Alembic single head
+        run: |
+          python - <<'PY'
+          from alembic.config import Config
+          from alembic.script import ScriptDirectory
+          head = ScriptDirectory.from_config(Config("alembic.ini")).get_current_head()
+          assert head == "0092_finance_realized_fx_gl_bridge_g372", head
+          print("ALEMBIC_HEAD", head)
+          PY
+      - name: Required PR contract shard
+        run: python scripts/run_contract_shard.py pr_required
+      - name: Version parity
+        run: python -m pytest tests/contracts/test_ops_g409_version_parity.py -q
+
+  helm:
+    name: helm lint/template
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.16.2
+      - name: Helm lint + template
+        run: |
+          helm lint deploy/helm/eaos
+          helm template eaos deploy/helm/eaos \
+            --set secrets.jwtSecret=ci-placeholder \
+            --set secrets.postgresPassword=ci-placeholder \
+            >/tmp/eaos-render.yaml
+          test -s /tmp/eaos-render.yaml
+
+  docker-smoke:
+    name: docker import smoke (optional host)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build gateway image
+        run: docker build -f deploy/docker/Dockerfile -t eaos-ci:local .
+      - name: Import smoke
+        run: docker run --rm --entrypoint python eaos-ci:local /smoke_imports.py

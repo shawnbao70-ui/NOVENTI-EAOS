@@ -1,0 +1,1154 @@
+openapi: 3.1.0
+info:
+  title: NOVENTI EAOS Platform API
+  version: 1.0.13
+  description: |
+    PHX-G135 / G174 / G176 / G374 / G378 / G379 Foundation platform-plane contract.
+    Documents declared EAOS role catalog (`/platform/roles`) and IdP issuer
+    registry + tenant federation bindings (`/platform/idp/*`). PHX-G374 adds
+    Digital Employee thin status (`/platform/digital-employee/status`) declaring
+    identity AI-employee surface available with labor_write=false,
+    commercial_auto_write=false, and execution_authority=none. PHX-G378 adds
+    Industry Package boundary status (`/platform/industry-package/status`) with
+    industry_package_runtime=false, host_install=false, declaration_only=true,
+    package_type_industry_supported_in_manifest=true, and
+    execution_authority=none. PHX-G379 adds AI Workforce thin status
+    (`/platform/ai-workforce/status`) with task_engine=false, labor_write=false,
+    commercial_auto_write=false, execution_authority=none, and
+    digital_employee_identity_separate=true (distinct from G374 DE status).
+    Platform context is derived by the trusted authentication boundary;
+    tenant_id / platform_scope / roles must never be accepted from request
+    bodies. JWKS plaintext is never returned (only `has_jwks_json`).
+    PHX-G174 aligns KernelError to GatewayDetailError. PHX-G176 documents
+    named 400/404/409/503 on IdP/roles write paths. Foundation harden
+    documents 401 when platform auth context is missing. Role→grant
+    auto-write, WebAuthn product UI, workforce task CRUD, commercial
+    auto-writes, and host package installs remain out of scope.
+    Organization tenant lifecycle stays in organization.openapi.yaml.
+servers:
+  - url: /v1
+security:
+  - bearerAuth: []
+paths:
+  /platform/roles:
+    get:
+      operationId: listPlatformRoles
+      summary: List declared EAOS roles (include disabled)
+      tags: [PlatformRoles]
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Declared role catalog
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeclaredRoleListEnvelope"
+        "401":
+          description: Platform authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Role catalog store unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+    post:
+      operationId: upsertPlatformRole
+      summary: Upsert a declared EAOS role by name
+      tags: [PlatformRoles]
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertDeclaredRoleRequest"
+      responses:
+        "201":
+          description: Role created or updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeclaredRoleActionEnvelope"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid role name
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "401":
+          description: Platform authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Role catalog store unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /platform/roles/{roleId}/disable:
+    post:
+      operationId: disablePlatformRole
+      summary: Disable a declared EAOS role
+      tags: [PlatformRoles]
+      parameters:
+        - $ref: "#/components/parameters/RoleId"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmptyBody"
+      responses:
+        "200":
+          description: Role disabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeclaredRoleEnvelope"
+        "401":
+          description: Platform authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "404":
+          description: Role not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Role catalog store unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /platform/idp/issuers:
+    get:
+      operationId: listIdpIssuers
+      summary: List IdP issuers in the platform registry
+      tags: [PlatformIdp]
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Issuer registry (desensitized)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdpIssuerListEnvelope"
+        "401":
+          description: Platform authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: IdP registry unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+    post:
+      operationId: createIdpIssuer
+      summary: Create or register an IdP issuer
+      tags: [PlatformIdp]
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateIdpIssuerRequest"
+      responses:
+        "201":
+          description: Issuer registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdpIssuerEnvelope"
+        "401":
+          description: Platform authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid issuer or missing JWKS material
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Active issuer already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: IdP registry unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /platform/idp/issuers/{issuerId}/disable:
+    post:
+      operationId: disableIdpIssuer
+      summary: Disable an IdP issuer
+      tags: [PlatformIdp]
+      parameters:
+        - $ref: "#/components/parameters/IssuerId"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmptyBody"
+      responses:
+        "200":
+          description: Issuer disabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdpIssuerEnvelope"
+        "401":
+          description: Platform authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "404":
+          description: Issuer not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: IdP registry unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /platform/idp/discovery/sync:
+    post:
+      operationId: syncOidcDiscoveryToIdpRegistry
+      summary: Opt-in Discovery → IdP registry upsert
+      description: >
+        Requires EAOS_OIDC_DISCOVERY_REGISTRY_WRITE. Env/wire still take
+        precedence over registry for runtime JWKS resolution.
+      tags: [PlatformIdp]
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmptyBody"
+      responses:
+        "200":
+          description: Sync result posture
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiscoverySyncEnvelope"
+        "401":
+          description: Platform authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "503":
+          description: Discovery write unavailable or misconfigured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /platform/idp/federation/matrix:
+    get:
+      operationId: getTenantIdpFederationMatrix
+      summary: Read-only tenant × issuer federation matrix
+      tags: [PlatformIdp]
+      parameters:
+        - name: include_unbound_issuers
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: true
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Federation matrix
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FederationMatrixEnvelope"
+        "401":
+          description: Platform authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Federation store unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /platform/idp/federation/tenants/{tenantId}/bindings:
+    get:
+      operationId: listTenantIdpBindings
+      summary: List IdP bindings for a tenant
+      tags: [PlatformIdp]
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Tenant IdP bindings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TenantIdpBindingListEnvelope"
+        "401":
+          description: Platform authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Federation store unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+    post:
+      operationId: createTenantIdpBinding
+      summary: Bind an issuer to a tenant
+      tags: [PlatformIdp]
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTenantIdpBindingRequest"
+      responses:
+        "201":
+          description: Binding created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TenantIdpBindingEnvelope"
+        "401":
+          description: Platform authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid issuer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Active binding already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Federation store unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /platform/idp/federation/bindings/{bindingId}/unbind:
+    post:
+      operationId: unbindTenantIdpBinding
+      summary: Unbind a tenant IdP binding
+      tags: [PlatformIdp]
+      parameters:
+        - $ref: "#/components/parameters/BindingId"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmptyBody"
+      responses:
+        "200":
+          description: Binding unbound
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TenantIdpBindingEnvelope"
+        "401":
+          description: Platform authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "404":
+          description: Binding not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Federation store unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /platform/idp/federation/bindings/{bindingId}/priority:
+    post:
+      operationId: setTenantIdpBindingPriority
+      summary: Set issuer priority on a binding (lower wins)
+      tags: [PlatformIdp]
+      parameters:
+        - $ref: "#/components/parameters/BindingId"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetBindingPriorityRequest"
+      responses:
+        "200":
+          description: Binding priority updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TenantIdpBindingEnvelope"
+        "401":
+          description: Platform authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid priority
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Binding not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Federation store unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /platform/digital-employee/status:
+    get:
+      operationId: getDigitalEmployeeStatus
+      summary: Digital Employee thin posture (no labor/commercial write)
+      tags: [DigitalEmployee]
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      security: []
+      responses:
+        "200":
+          description: Honest Digital Employee thin boundary flags (PHX-G374)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DigitalEmployeeStatusEnvelope"
+  /platform/industry-package/status:
+    get:
+      operationId: getIndustryPackageStatus
+      summary: Industry Package boundary posture (declaration only; no host install)
+      tags: [IndustryPackage]
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      security: []
+      responses:
+        "200":
+          description: Honest Industry Package boundary flags (PHX-G378)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IndustryPackageStatusEnvelope"
+  /platform/ai-workforce/status:
+    get:
+      operationId: getAiWorkforceStatus
+      summary: AI Workforce thin posture (no task engine; distinct from Digital Employee)
+      tags: [AiWorkforce]
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      security: []
+      responses:
+        "200":
+          description: Honest AI Workforce thin boundary flags (PHX-G379)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiWorkforceStatusEnvelope"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Platform-scoped EAOS JWT (platform context derived server-side)
+  parameters:
+    CorrelationId:
+      name: X-Correlation-Id
+      in: header
+      required: false
+      schema:
+        type: string
+        minLength: 1
+    RoleId:
+      name: roleId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    IssuerId:
+      name: issuerId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    TenantId:
+      name: tenantId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    BindingId:
+      name: bindingId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    EmptyBody:
+      type: object
+      additionalProperties: false
+      description: Body may be empty; context override fields are rejected
+    DigitalEmployeeStatusData:
+      type: object
+      additionalProperties: false
+      description: >
+        PHX-G374 Digital Employee thin posture. Identity AI-employee Kernel
+        APIs remain; this surface never grants labor or commercial writes.
+      required:
+        - identity_ai_employee_surface
+        - labor_write
+        - commercial_auto_write
+        - execution_authority
+      properties:
+        identity_ai_employee_surface:
+          type: boolean
+          const: true
+        labor_write:
+          type: boolean
+          const: false
+        commercial_auto_write:
+          type: boolean
+          const: false
+        execution_authority:
+          type: string
+          const: none
+    DigitalEmployeeStatusEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/DigitalEmployeeStatusData"
+    IndustryPackageStatusData:
+      type: object
+      additionalProperties: false
+      description: >
+        PHX-G378 Industry Package boundary posture. Manifest may declare
+        package_type=industry; this surface never opens host install runtime.
+      required:
+        - industry_package_runtime
+        - host_install
+        - declaration_only
+        - package_type_industry_supported_in_manifest
+        - execution_authority
+      properties:
+        industry_package_runtime:
+          type: boolean
+          const: false
+        host_install:
+          type: boolean
+          const: false
+        declaration_only:
+          type: boolean
+          const: true
+        package_type_industry_supported_in_manifest:
+          type: boolean
+          const: true
+        execution_authority:
+          type: string
+          const: none
+    IndustryPackageStatusEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/IndustryPackageStatusData"
+    AiWorkforceStatusData:
+      type: object
+      additionalProperties: false
+      description: >
+        PHX-G379 AI Workforce thin posture. Distinct from Digital Employee
+        identity surface; this slice never opens task engine or labor writes.
+      required:
+        - task_engine
+        - labor_write
+        - commercial_auto_write
+        - execution_authority
+        - digital_employee_identity_separate
+      properties:
+        task_engine:
+          type: boolean
+          const: false
+        labor_write:
+          type: boolean
+          const: false
+        commercial_auto_write:
+          type: boolean
+          const: false
+        execution_authority:
+          type: string
+          const: none
+        digital_employee_identity_separate:
+          type: boolean
+          const: true
+    AiWorkforceStatusEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/AiWorkforceStatusData"
+    UpsertDeclaredRoleRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 128
+    IdpJwksKey:
+      type: object
+      additionalProperties: true
+      description: >
+        JWK object keys consumed by gateway JWT verify (_select_rsa_jwk /
+        RSA load). RFC residual fields (alg/use/x5c/…) allowed (PHX-G246).
+      properties:
+        kty:
+          type: string
+          description: Live filter requires RSA for JWT verify path.
+        kid:
+          type: string
+          description: Optional; required when JWKS has multiple RSA keys.
+        n:
+          type: string
+          description: RSA modulus (base64url) when present for RSA keys.
+        e:
+          type: string
+          description: RSA exponent (base64url) when present for RSA keys.
+    IdpJwksDocument:
+      type: object
+      additionalProperties: true
+      description: >
+        JWKS document accepted on CreateIdpIssuerRequest.jwks_json object form.
+        Live consume reads keys[]; residual top-level fields allowed (PHX-G246).
+      properties:
+        keys:
+          type: array
+          items:
+            $ref: "#/components/schemas/IdpJwksKey"
+    CreateIdpIssuerRequest:
+      type: object
+      additionalProperties: false
+      required: [issuer]
+      properties:
+        issuer:
+          type: string
+          minLength: 1
+        jwks_url:
+          type: [string, "null"]
+          format: uri
+        jwks_json:
+          description: >
+            Accepted on write; never returned in responses. Object form is
+            IdpJwksDocument (live keys named; RFC residual open). String form
+            is raw JWKS JSON. PHX-G246.
+          oneOf:
+            - $ref: "#/components/schemas/IdpJwksDocument"
+            - type: string
+            - type: "null"
+    CreateTenantIdpBindingRequest:
+      type: object
+      additionalProperties: false
+      required: [issuer]
+      properties:
+        issuer:
+          type: string
+          minLength: 1
+    SetBindingPriorityRequest:
+      type: object
+      additionalProperties: false
+      required: [priority]
+      properties:
+        priority:
+          type: integer
+          minimum: 0
+    DeclaredRole:
+      type: object
+      additionalProperties: false
+      required: [id, name, status, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        status:
+          type: string
+        version:
+          type: integer
+          minimum: 0
+    DeclaredRoleEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/DeclaredRole"
+    DeclaredRoleActionEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          allOf:
+            - $ref: "#/components/schemas/DeclaredRole"
+            - type: object
+              additionalProperties: false
+              required: [action]
+              properties:
+                action:
+                  type: string
+    CountMeta:
+      type: object
+      additionalProperties: false
+      required: [count]
+      description: >
+        Shared list-envelope meta with count (PHX-G234). Used by platform
+        declared-role / IdP issuer / tenant-binding list envelopes.
+      properties:
+        count:
+          type: integer
+          minimum: 0
+    DeclaredRoleListEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeclaredRole"
+        meta:
+          $ref: "#/components/schemas/CountMeta"
+    IdpIssuer:
+      type: object
+      additionalProperties: false
+      required: [id, issuer, jwks_url, has_jwks_json, status, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        issuer:
+          type: string
+        jwks_url:
+          type: [string, "null"]
+        has_jwks_json:
+          type: boolean
+          description: True when JWKS JSON is stored; plaintext JWKS is never returned
+        status:
+          type: string
+        version:
+          type: integer
+          minimum: 0
+    IdpIssuerEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/IdpIssuer"
+    IdpIssuerListEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/IdpIssuer"
+        meta:
+          $ref: "#/components/schemas/CountMeta"
+    DiscoveryRegistryWritePosture:
+      type: object
+      additionalProperties: false
+      required: [enabled, action]
+      description: >
+        Opt-in OIDC Discovery → IdP registry write posture (PHX-G238).
+        Mirrors maybe_write_discovery_to_registry() / discovery_registry_write_status().
+      properties:
+        enabled:
+          type: boolean
+        action:
+          type: string
+          enum: [skipped, error, unchanged, created, updated, reactivated]
+        issuer:
+          type: string
+          minLength: 1
+        jwks_url:
+          type: string
+          minLength: 1
+        id:
+          type: string
+          format: uuid
+        version:
+          type: integer
+          minimum: 0
+        error:
+          type: string
+    DiscoverySyncEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/DiscoveryRegistryWritePosture"
+    TenantIdpBinding:
+      type: object
+      additionalProperties: false
+      required: [id, bound_tenant_id, issuer, status, priority, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        bound_tenant_id:
+          type: string
+          format: uuid
+        issuer:
+          type: string
+        status:
+          type: string
+        priority:
+          type: integer
+          minimum: 0
+        version:
+          type: integer
+          minimum: 0
+    TenantIdpBindingEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/TenantIdpBinding"
+    TenantIdpBindingListEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/TenantIdpBinding"
+        meta:
+          $ref: "#/components/schemas/CountMeta"
+    FederationMatrixCell:
+      type: object
+      additionalProperties: false
+      required:
+        - bound_tenant_id
+        - issuer
+        - state
+        - binding_id
+        - priority
+        - registry_status
+      description: >
+        Live federation matrix cell keys (PHX-G230). Mirrors
+        tenant_idp_federation.federation_matrix cells.
+      properties:
+        bound_tenant_id:
+          type: [string, "null"]
+        issuer:
+          type: string
+        state:
+          type: string
+          enum: [active, disabled, unbound]
+        binding_id:
+          type: [string, "null"]
+          format: uuid
+        priority:
+          type: [integer, "null"]
+        registry_status:
+          type: string
+          enum: [absent, active, disabled]
+    FederationMatrixPayload:
+      type: object
+      additionalProperties: false
+      required: [cells, tenants, issuers]
+      description: Named data payload for FederationMatrixEnvelope (PHX-G230).
+      properties:
+        cells:
+          type: array
+          items:
+            $ref: "#/components/schemas/FederationMatrixCell"
+        tenants:
+          type: array
+          items:
+            type: string
+        issuers:
+          type: array
+          items:
+            type: string
+    FederationMatrixMeta:
+      type: object
+      additionalProperties: false
+      required:
+        - cell_count
+        - tenant_count
+        - issuer_count
+        - binding_count
+        - active_count
+        - include_unbound_issuers
+      description: >
+        Live federation matrix meta keys (PHX-G230). Closes opaque
+        additionalProperties:true meta drift.
+      properties:
+        cell_count:
+          type: integer
+          minimum: 0
+        tenant_count:
+          type: integer
+          minimum: 0
+        issuer_count:
+          type: integer
+          minimum: 0
+        binding_count:
+          type: integer
+          minimum: 0
+        active_count:
+          type: integer
+          minimum: 0
+        include_unbound_issuers:
+          type: boolean
+    FederationMatrixEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, meta]
+      description: >
+        GET /platform/idp/federation/matrix envelope (PHX-G230 named honesty).
+      properties:
+        data:
+          $ref: "#/components/schemas/FederationMatrixPayload"
+        meta:
+          $ref: "#/components/schemas/FederationMatrixMeta"
+    ContextElevationDenialDetails:
+      type: object
+      additionalProperties: false
+      description: >
+        Known details shape for code TERMINAL_CONTEXT_ELEVATION_DENIED
+        (live /context/echo elevation deny). PHX-G208/G220 per-code honesty;
+        other error codes may use different details keys.
+      required: [fields]
+      properties:
+        fields:
+          type: array
+          items:
+            type: string
+          description: Sorted denied elevation field names.
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          description: >
+            Optional structured denial context (G202/G204/G216/G220). Known
+            elevation shape is composed via anyOf $ref to
+            ContextElevationDenialDetails; residual object allows other keys.
+          anyOf:
+            - $ref: "#/components/schemas/ContextElevationDenialDetails"
+            - type: object
+              additionalProperties: true
+        correlation_id:
+          type: [string, "null"]
+    ValidationErrorItem:
+      type: object
+      description: FastAPI/Pydantic request validation error item.
+      required: [loc, msg, type]
+      additionalProperties: true
+      properties:
+        loc:
+          type: array
+          items:
+            oneOf:
+              - type: string
+              - type: integer
+        msg:
+          type: string
+        type:
+          type: string
+    HTTPValidationError:
+      type: object
+      description: FastAPI request validation envelope (422 detail list).
+      additionalProperties: false
+      required: [detail]
+      properties:
+        detail:
+          type: array
+          items:
+            $ref: "#/components/schemas/ValidationErrorItem"
+    GatewayDetailError:
+      type: object
+      additionalProperties: false
+      required: [detail]
+      properties:
+        detail:
+          $ref: "#/components/schemas/ErrorResponse"
+  responses:
+    KernelError:
+      description: FastAPI HTTPException detail envelope (PHX-G174)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/GatewayDetailError"
+tags:
+  - name: PlatformRoles
+    description: Declared EAOS role catalog (≠ Role→grant auto-write)
+  - name: PlatformIdp
+    description: IdP issuer registry and tenant federation bindings
+  - name: DigitalEmployee
+    description: >
+      Digital Employee thin status (PHX-G374); identity surface only —
+      no labor write, commercial auto-write, or execution authority
+  - name: IndustryPackage
+    description: >
+      Industry Package boundary status (PHX-G378); declaration only —
+      no host install runtime or execution authority
+  - name: AiWorkforce
+    description: >
+      AI Workforce thin status (PHX-G379); task engine closed —
+      distinct from Digital Employee identity; no labor/commercial write

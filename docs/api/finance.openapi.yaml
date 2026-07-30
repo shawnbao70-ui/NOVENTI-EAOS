@@ -1,0 +1,138 @@
+openapi: 3.1.0
+info:
+  title: NOVENTI EAOS Finance Foundation Status API
+  version: 1.0.0
+  description: |
+    PHX-G394 adds read-only Finance foundation status for Terminal strip
+    projection. Terminal does not hold business truth; commercial_auto_write
+    remains false. Adapter and AR/GL write surfaces stay on their domain routes.
+servers:
+  - url: /v1
+security:
+  - bearerAuth: []
+paths:
+  /finance/status:
+    get:
+      operationId: getFinanceStatus
+      summary: Read-only Finance foundation status for Terminal strip
+      tags: [Finance]
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Finance foundation status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FinanceStatusEnvelope"
+        default:
+          $ref: "#/components/responses/KernelError"
+components:
+  parameters:
+    CorrelationId:
+      name: X-Correlation-Id
+      in: header
+      required: false
+      schema:
+        type: string
+        minLength: 1
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  responses:
+    KernelError:
+      description: Kernel error envelope
+      content:
+        application/json:
+          schema:
+            type: object
+  schemas:
+    FinanceStatusEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/FinanceStatusData"
+    FinanceStatusData:
+      type: object
+      additionalProperties: false
+      description: PHX-G394 / Batch-G Finance status for Terminal strip honesty.
+      required:
+        - writable
+        - commercial_auto_write
+        - holds_business_truth
+        - terminal_holds_business_truth
+        - bank_file_import
+        - external_psp_network_default
+        - gl_period_status_surface
+        - party_balance_projection
+        - treasury_transfer_surface
+        - crm_quote_so_do_state_consistency
+        - ar_receipt_credit_boundary
+        - commission_settlement_mode
+        - crm_finance_handoff_audit
+        - purchase_order_observability
+        - inventory_movement_observability
+        - receiving_return_boundary
+        - purchase_inventory_cross_contract
+        - supported_surfaces
+      properties:
+        writable:
+          type: boolean
+          const: false
+        commercial_auto_write:
+          type: boolean
+          const: false
+        holds_business_truth:
+          type: boolean
+          const: true
+        terminal_holds_business_truth:
+          type: boolean
+          const: false
+        bank_file_import:
+          type: string
+          const: deferred
+        external_psp_network_default:
+          type: string
+          const: "off"
+        gl_period_status_surface:
+          type: boolean
+          const: true
+        party_balance_projection:
+          type: boolean
+          const: true
+        treasury_transfer_surface:
+          type: boolean
+          const: true
+        crm_quote_so_do_state_consistency:
+          type: boolean
+          const: true
+        ar_receipt_credit_boundary:
+          type: string
+          const: internal_records_only
+        commission_settlement_mode:
+          type: string
+          const: read_only_status
+        crm_finance_handoff_audit:
+          type: boolean
+          const: true
+        purchase_order_observability:
+          type: boolean
+          const: true
+        inventory_movement_observability:
+          type: boolean
+          const: true
+        receiving_return_boundary:
+          type: string
+          const: kernel_records_only
+        purchase_inventory_cross_contract:
+          type: boolean
+          const: true
+        supported_surfaces:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          minItems: 1

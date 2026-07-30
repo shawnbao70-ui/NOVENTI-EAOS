@@ -1,0 +1,1539 @@
+openapi: 3.1.0
+info:
+  title: NOVENTI EAOS Marketplace API
+  version: 1.2.17
+  description: |
+    PHX-G186 tightens Marketplace status GET body field parity
+    (PaymentClearingProduct + FoundationStatusData vs runtime emit).
+    PHX-G181 documents named Marketplace status codes (400/403/404/409/503).
+    PHX-M16 technical distribution + PHX-M17 Foundation commercial policy (ADR-0054)
+    + PHX-G162 Eng Explicit Defer `4` payment clearing (env-gated internal record)
+    + PHX-G172/G173 allowlisted host-acquire (technical acquire + first-party
+    Extension Host projection; status posture exposes host_acquire_product;
+    no Marketplace arbitrary scripts; not a package install)
+    + PHX-G174 KernelError → GatewayDetailError envelope.
+    Acquire remains a technical record, not a purchase settlement. External PSP
+    capture/refund and external arbitration remain fail-closed.
+servers:
+  - url: /v1
+security:
+  - bearerAuth: []
+paths:
+  /marketplace/status:
+    get:
+      operationId: getMarketplaceStatus
+      summary: Read-only Foundation status posture
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Marketplace Foundation status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FoundationStatusEnvelope"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /marketplace/listings/{listingId}/payment-clearing:
+    post:
+      operationId: createMarketplacePaymentClearing
+      summary: Env-gated internal payment clearing (PHX-G162)
+      description: |
+        Default OFF → 503 GATEWAY_PAYMENT_CLEARING_DISABLED.
+        When EAOS_MARKETPLACE_PAYMENT_CLEARING_ENABLED=true, records an
+        internal audit-backed clearing linked to an issued invoice.
+        Does not call an external payment-service provider.
+      parameters:
+        - $ref: "#/components/parameters/ListingId"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentClearingRequest"
+      responses:
+        "201":
+          description: Internal clearing recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentClearingEnvelope"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: invoice_id missing or not a UUID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Payment clearing disabled (default)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentClearingStubError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /marketplace/listings:
+    post:
+      operationId: createMarketplaceListing
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateListingRequest"
+      responses:
+        "201":
+          description: Listing created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UuidResult"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid listing payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Listing conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Marketplace service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /marketplace/listings/{listingId}:
+    get:
+      operationId: getMarketplaceListing
+      parameters:
+        - $ref: "#/components/parameters/ListingId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Listing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarketplaceListing"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Listing not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Marketplace service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /marketplace/listings/{listingId}/signature:
+    post:
+      operationId: attachListingSignature
+      parameters:
+        - $ref: "#/components/parameters/ListingId"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AttachSignatureRequest"
+      responses:
+        "200":
+          description: Signature attached
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BooleanResult"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid signature payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Listing not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Signature required/invalid or signing unconfigured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Marketplace service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /marketplace/listings/{listingId}/submit:
+    post:
+      operationId: submitListingForReview
+      parameters:
+        - $ref: "#/components/parameters/ListingId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BooleanResult"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "400":
+          description: Invalid submit payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Listing not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: State conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Marketplace service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /marketplace/listings/{listingId}/review:
+    post:
+      operationId: reviewMarketplaceListing
+      parameters:
+        - $ref: "#/components/parameters/ListingId"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewListingRequest"
+      responses:
+        "200":
+          description: Reviewed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BooleanResult"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid review payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Listing not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: State conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Marketplace service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /marketplace/listings/{listingId}/publish:
+    post:
+      operationId: publishMarketplaceListing
+      parameters:
+        - $ref: "#/components/parameters/ListingId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Published
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BooleanResult"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "400":
+          description: Invalid publish payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Listing not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Not approved or state conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Marketplace service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /marketplace/listings/{listingId}/revoke:
+    post:
+      operationId: revokeMarketplaceListing
+      parameters:
+        - $ref: "#/components/parameters/ListingId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Revoked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BooleanResult"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "400":
+          description: Invalid revoke payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Listing not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Already revoked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Marketplace service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /marketplace/listings/{listingId}/acquire:
+    post:
+      operationId: acquireMarketplaceListing
+      parameters:
+        - $ref: "#/components/parameters/ListingId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "201":
+          description: Technical acquisition created (not a purchase contract)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UuidResult"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "400":
+          description: Invalid acquire payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "403":
+          description: Capability or commercial policy required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Listing not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Already acquired / not published / signature
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Marketplace service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /marketplace/listings/{listingId}/host-acquire:
+    post:
+      operationId: hostAcquireMarketplaceListing
+      summary: Technical acquire + allowlisted Extension Host projection
+      description: >
+        PHX-G172. Performs technical acquire (idempotent if already acquired),
+        then projects first-party allowlisted package keys onto the sandboxed
+        Extension Host. Does not execute Marketplace scripts, does not install
+        packages, and is not a purchase settlement.
+      parameters:
+        - $ref: "#/components/parameters/ListingId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "201":
+          description: Host projection result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HostAcquireResult"
+        "400":
+          description: Invalid host-acquire payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "403":
+          description: Not allowlisted or capability required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Listing not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: State/signature conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Marketplace service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /marketplace/listings/{listingId}/pricing:
+    post:
+      operationId: setMarketplacePricing
+      summary: Set fixed listing price (Foundation commercial policy)
+      parameters:
+        - $ref: "#/components/parameters/ListingId"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetPricingRequest"
+      responses:
+        "200":
+          description: Pricing stored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BooleanResult"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid pricing payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Listing not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Commercial policy required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Marketplace service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /marketplace/listings/{listingId}/invoices:
+    post:
+      operationId: createMarketplaceInvoice
+      summary: Issue immediate invoice from current fixed pricing
+      parameters:
+        - $ref: "#/components/parameters/ListingId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "201":
+          description: Invoice issued (not a payment settlement)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UuidResult"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "400":
+          description: Invalid invoice payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Listing not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Commercial policy required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Marketplace service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /marketplace/listings/{listingId}/disputes:
+    post:
+      operationId: openMarketplaceDispute
+      summary: Open a publisher-tenant dispute record
+      parameters:
+        - $ref: "#/components/parameters/ListingId"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OpenDisputeRequest"
+      responses:
+        "201":
+          description: Dispute opened
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UuidResult"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid dispute payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Listing not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: State conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Marketplace service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /marketplace/disputes/{disputeId}/resolve:
+    post:
+      operationId: resolveMarketplaceDispute
+      summary: Resolve dispute under publisher-tenant authority
+      parameters:
+        - name: disputeId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResolveDisputeRequest"
+      responses:
+        "200":
+          description: Dispute resolved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BooleanResult"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid resolve payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Dispute not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: State conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Marketplace service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /marketplace/listings/{listingId}/revenue-share:
+    post:
+      operationId: setMarketplaceRevenueShare
+      summary: Set platform share in basis points (0–5000)
+      parameters:
+        - $ref: "#/components/parameters/ListingId"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetRevenueShareRequest"
+      responses:
+        "200":
+          description: Revenue share stored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BooleanResult"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid revenue-share payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Listing not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Commercial policy required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Marketplace service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    CorrelationId:
+      name: X-Correlation-Id
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    ListingId:
+      name: listingId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    FoundationStatusEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/FoundationStatusData"
+    FoundationStatusData:
+      type: object
+      additionalProperties: false
+      description: >
+        Marketplace status including PHX-G400–G402 economy shells.
+        ENABLE_*_NETWORK / external PSP remain default OFF; bank file import deferred.
+      required:
+        - writable
+        - foundation_commercial_policy
+        - economy_residual_reviewed
+        - external_commercial_services
+        - host_acquire_not_package_install
+        - payment_clearing
+        - payment_clearing_product
+        - host_acquire_product
+        - external_arbitration
+        - metering
+        - metering_product
+        - entitlement_product
+        - billing_record_product
+        - dispute_arbitration_product
+        - supported_surfaces
+      properties:
+        writable:
+          type: boolean
+        foundation_commercial_policy:
+          type: string
+          const: v1
+        economy_residual_reviewed:
+          type: boolean
+          const: true
+        external_commercial_services:
+          type: string
+          const: fail_closed
+        host_acquire_not_package_install:
+          type: boolean
+          const: true
+        payment_clearing:
+          type: string
+          enum: [fail_closed, internal_env_gated]
+          description: fail_closed (default) or internal_env_gated when enabled
+        payment_clearing_product:
+          $ref: "#/components/schemas/PaymentClearingProduct"
+        host_acquire_product:
+          $ref: "#/components/schemas/HostAcquireProduct"
+        external_arbitration:
+          type: string
+          const: fail_closed
+        metering:
+          type: string
+          const: fail_closed
+        metering_product:
+          $ref: "#/components/schemas/MeteringProduct"
+        entitlement_product:
+          $ref: "#/components/schemas/EntitlementProduct"
+        billing_record_product:
+          $ref: "#/components/schemas/BillingRecordProduct"
+        dispute_arbitration_product:
+          $ref: "#/components/schemas/DisputeArbitrationProduct"
+        supported_surfaces:
+          type: array
+          items:
+            type: string
+            minLength: 1
+    MeteringProduct:
+      type: object
+      additionalProperties: false
+      required:
+        - surface
+        - milestone
+        - posture
+        - entitlement_linked
+        - external_psp
+        - network_default
+        - commercial_auto_write
+        - routes
+      properties:
+        surface:
+          type: string
+          const: foundation_marketplace_metering_shell
+        milestone:
+          type: string
+          const: PHX-G400
+        posture:
+          type: string
+          const: shell_fail_closed
+        entitlement_linked:
+          type: boolean
+          const: false
+        external_psp:
+          type: boolean
+          const: false
+        network_default:
+          type: string
+          const: "off"
+        commercial_auto_write:
+          type: boolean
+          const: false
+        routes:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          minItems: 1
+    EntitlementProduct:
+      type: object
+      additionalProperties: false
+      required:
+        - surface
+        - milestone
+        - posture
+        - auto_grant
+        - cap_to_grant_invent
+        - commercial_auto_write
+        - routes
+      properties:
+        surface:
+          type: string
+          const: foundation_marketplace_entitlement_shell
+        milestone:
+          type: string
+          const: PHX-G400
+        posture:
+          type: string
+          const: shell_declaration_only
+        auto_grant:
+          type: boolean
+          const: false
+        cap_to_grant_invent:
+          type: boolean
+          const: false
+        commercial_auto_write:
+          type: boolean
+          const: false
+        routes:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          minItems: 1
+    BillingRecordProduct:
+      type: object
+      additionalProperties: false
+      required:
+        - surface
+        - milestone
+        - posture
+        - external_psp
+        - enable_psp_network_default
+        - bank_file_import
+        - settlement_rail
+        - invoice_surface
+        - finance_ar_invoice_separate
+        - routes
+      properties:
+        surface:
+          type: string
+          const: foundation_marketplace_billing_record_shell
+        milestone:
+          type: string
+          const: PHX-G401
+        posture:
+          type: string
+          const: internal_invoice_shell
+        external_psp:
+          type: boolean
+          const: false
+        enable_psp_network_default:
+          type: string
+          const: "off"
+        bank_file_import:
+          type: string
+          const: deferred
+        settlement_rail:
+          type: string
+          const: internal_record_only_when_clearing_enabled
+        invoice_surface:
+          type: string
+          const: marketplace_listing_invoice
+        finance_ar_invoice_separate:
+          type: boolean
+          const: true
+        routes:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          minItems: 1
+    DisputeArbitrationProduct:
+      type: object
+      additionalProperties: false
+      required:
+        - surface
+        - milestone
+        - dispute_surface
+        - external_arbitration
+        - external_arbitration_invent
+        - commercial_auto_write
+        - routes
+        - fail_closed_reasons
+      properties:
+        surface:
+          type: string
+          const: foundation_marketplace_dispute_arbitration_shell
+        milestone:
+          type: string
+          const: PHX-G402
+        dispute_surface:
+          type: string
+          const: publisher_tenant_resolve
+        external_arbitration:
+          type: string
+          const: fail_closed
+        external_arbitration_invent:
+          type: boolean
+          const: false
+        commercial_auto_write:
+          type: boolean
+          const: false
+        routes:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          minItems: 1
+        fail_closed_reasons:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          minItems: 1
+    HostAcquireProduct:
+      type: object
+      additionalProperties: false
+      required:
+        - surface
+        - milestone
+        - mode
+        - arbitrary_scripts
+        - package_install
+        - external_psp
+        - allowlist
+        - route
+      properties:
+        surface:
+          type: string
+          const: foundation_marketplace_host_acquire
+        milestone:
+          type: string
+          const: PHX-G173
+        mode:
+          type: string
+          const: allowlisted_first_party
+        arbitrary_scripts:
+          type: boolean
+          const: false
+        package_install:
+          type: boolean
+          const: false
+        external_psp:
+          type: boolean
+          const: false
+        allowlist:
+          type: array
+          items:
+            type: string
+            minLength: 1
+        route:
+          type: string
+    PaymentClearingProduct:
+      type: object
+      additionalProperties: false
+      required:
+        - surface
+        - milestone
+        - payment_clearing_enabled
+        - clearing_routes
+        - clearing_stub_observability
+        - settlement_rail
+        - external_psp
+        - external_arbitration
+        - metering
+        - fail_closed_reasons
+      properties:
+        surface:
+          type: string
+          const: foundation_marketplace_payment_clearing
+        milestone:
+          type: string
+          const: PHX-G162
+        payment_clearing_enabled:
+          type: boolean
+        clearing_routes:
+          type: array
+          items:
+            type: string
+            minLength: 1
+        clearing_stub_observability:
+          type: boolean
+          const: true
+        settlement_rail:
+          type: string
+          enum: [disabled, internal_record_only]
+        external_psp:
+          type: boolean
+          const: false
+        external_arbitration:
+          type: string
+          const: fail_closed
+        metering:
+          type: string
+          const: fail_closed
+        fail_closed_reasons:
+          type: array
+          items:
+            type: string
+            minLength: 1
+    PaymentClearingRequest:
+      type: object
+      additionalProperties: false
+      description: Live body for POST payment-clearing (PHX-G254).
+      required: [invoice_id]
+      properties:
+        invoice_id:
+          type: string
+          format: uuid
+        note:
+          type: string
+
+    PaymentClearingEnvelope:
+      type: object
+      additionalProperties: false
+      description: 201 envelope wrapping PaymentClearingResult (PHX-G254).
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/PaymentClearingResult"
+
+    PaymentClearingResult:
+      type: object
+      additionalProperties: false
+      description: >
+        Live internal clearing record from record_payment_clearing (PHX-G254).
+        external_psp remains false (HARD HOLD).
+      required:
+        - clearing_step
+        - payment_cleared
+        - external_psp
+        - settlement_rail
+        - clearing_id
+        - listing_id
+        - invoice_id
+      properties:
+        clearing_step:
+          type: string
+          const: payment_clearing
+        payment_cleared:
+          type: boolean
+          const: true
+        external_psp:
+          type: boolean
+          const: false
+        settlement_rail:
+          type: string
+          const: internal_record_only
+        milestone:
+          type: string
+          const: PHX-G162
+        clearing_id:
+          type: string
+          format: uuid
+        listing_id:
+          type: string
+          format: uuid
+        invoice_id:
+          type: string
+          format: uuid
+        audit_id:
+          type: [string, "null"]
+          format: uuid
+
+    PaymentClearingStubDetail:
+      type: object
+      additionalProperties: false
+      description: >
+        Live 503 detail from raise_payment_clearing_disabled (PHX-G252).
+        external_psp remains false (HARD HOLD).
+      required: [code, message, clearing_step, payment_cleared, external_psp, settlement_rail, next_action, milestone]
+      properties:
+        code:
+          type: string
+          const: GATEWAY_PAYMENT_CLEARING_DISABLED
+        message:
+          type: string
+        clearing_step:
+          type: string
+          const: payment_clearing
+        payment_cleared:
+          type: boolean
+          const: false
+        external_psp:
+          type: boolean
+          const: false
+        settlement_rail:
+          type: string
+          const: none
+          description: Disabled stub always emits settlement_rail=none (G222).
+        next_action:
+          type: string
+          const: none
+          description: Disabled stub always emits next_action=none (G222).
+        milestone:
+          type: string
+          const: PHX-G162
+    PaymentClearingStubError:
+      type: object
+      additionalProperties: false
+      description: >
+        FastAPI HTTPException envelope for payment-clearing 503 when env is
+        off (PHX-G252). detail is PaymentClearingStubDetail.
+      required: [detail]
+      properties:
+        detail:
+          $ref: "#/components/schemas/PaymentClearingStubDetail"
+    UuidResult:
+      type: object
+      additionalProperties: false
+      required: [id, data]
+      description: >
+        Unified UuidResult dialect (PHX-G170): `id` and `data` carry the same
+        UUID for backward-compatible clients of either pre-unification shape.
+      properties:
+        id:
+          type: string
+          format: uuid
+        data:
+          type: string
+          format: uuid
+        audit_id:
+          type: string
+          format: uuid
+    BooleanResult:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: boolean
+        audit_id:
+          type: string
+          format: uuid
+    HostAcquirePayload:
+      type: object
+      additionalProperties: false
+      required:
+        - listing_id
+        - package_key
+        - extension_id
+        - extension_status
+      description: >
+        Named payload for HostAcquireResult.data (PHX-G226). Mirrors
+        host_acquire live emit keys.
+      properties:
+        listing_id:
+          type: string
+          format: uuid
+        package_key:
+          type: string
+        package_version:
+          type: string
+        acquisition_id:
+          type: [string, "null"]
+          format: uuid
+        already_acquired:
+          type: boolean
+        extension_id:
+          type: string
+          format: uuid
+        extension_status:
+          type: string
+        projected:
+          type: boolean
+        host_actions:
+          type: array
+          items:
+            type: string
+        notes:
+          type: array
+          items:
+            type: string
+    HostAcquireResult:
+      type: object
+      additionalProperties: false
+      required: [data]
+      description: >
+        Host-acquire success envelope; data is HostAcquirePayload (G226).
+      properties:
+        data:
+          $ref: "#/components/schemas/HostAcquirePayload"
+        audit_id:
+          type: [string, "null"]
+          format: uuid
+    CreateListingRequest:
+      type: object
+      additionalProperties: false
+      description: Live create_listing consume keys (PHX-G258).
+      required:
+        - package_key
+        - package_version
+        - required_permissions
+        - data_scope
+      properties:
+        package_key:
+          type: string
+        package_version:
+          type: string
+        required_permissions:
+          type: array
+          items:
+            type: string
+          minItems: 1
+        declared_events:
+          type: array
+          items:
+            type: string
+        data_scope:
+          type: string
+          minLength: 1
+    AttachSignatureRequest:
+      type: object
+      additionalProperties: false
+      required: [signature_ref]
+      properties:
+        signature_ref:
+          type: string
+          minLength: 1
+    ReviewListingRequest:
+      type: object
+      additionalProperties: false
+      required: [approve]
+      properties:
+        approve:
+          type: boolean
+        notes:
+          type: string
+    SetPricingRequest:
+      type: object
+      additionalProperties: false
+      required: [price]
+      properties:
+        price:
+          type: string
+          description: Non-negative decimal with up to 2 fractional digits
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          default: CNY
+    OpenDisputeRequest:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 1
+    ResolveDisputeRequest:
+      type: object
+      additionalProperties: false
+      required: [resolution]
+      properties:
+        resolution:
+          type: string
+          minLength: 1
+    SetRevenueShareRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        platform_share_bps:
+          type: integer
+          minimum: 0
+          maximum: 5000
+          default: 2000
+        share_ratio:
+          type: number
+          minimum: 0
+          maximum: 0.5
+          description: Optional alternate for platform_share_bps (0.2 → 2000)
+    MarketplaceListing:
+      type: object
+      additionalProperties: false
+      description: Live serialize_listing emit keys (PHX-G258).
+      required:
+        - id
+        - package_key
+        - package_version
+        - status
+        - data_scope
+      properties:
+        id:
+          type: string
+          format: uuid
+        package_key:
+          type: string
+        package_version:
+          type: string
+        status:
+          type: string
+          enum: [draft, submitted, approved, rejected, published, revoked]
+        signature_ref:
+          type: [string, "null"]
+        data_scope:
+          type: string
+        required_permissions:
+          type: array
+          items:
+            type: string
+        declared_events:
+          type: array
+          items:
+            type: string
+        version:
+          type: integer
+          minimum: 1
+    HostAcquireAllowlistDenialDetails:
+      type: object
+      additionalProperties: false
+      description: >
+        Known details when host-acquire rejects a listing whose package_key
+        is outside the first-party allowlist (live emit uses
+        COMMON_VALIDATION_FAILED + details.package_key). PHX-G212.
+      required: [package_key]
+      properties:
+        package_key:
+          type: string
+          minLength: 1
+    ErrorBody:
+      type: object
+      additionalProperties: false
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          description: >
+            Optional structured denial context (G202/G204/G212/G218). Known
+            host-acquire shape is composed via anyOf $ref; residual object keeps
+            elevation fields[] catalog. Other codes may add keys.
+          anyOf:
+            - $ref: "#/components/schemas/HostAcquireAllowlistDenialDetails"
+            - type: object
+              additionalProperties: true
+              properties:
+                fields:
+                  type: array
+                  items:
+                    type: string
+                  description: Present for context-elevation denials (sorted field names).
+    ValidationErrorItem:
+      type: object
+      description: FastAPI/Pydantic request validation error item.
+      required: [loc, msg, type]
+      additionalProperties: true
+      properties:
+        loc:
+          type: array
+          items:
+            oneOf:
+              - type: string
+              - type: integer
+        msg:
+          type: string
+        type:
+          type: string
+    HTTPValidationError:
+      type: object
+      description: FastAPI request validation envelope (422 detail list).
+      additionalProperties: false
+      required: [detail]
+      properties:
+        detail:
+          type: array
+          items:
+            $ref: "#/components/schemas/ValidationErrorItem"
+    GatewayDetailError:
+      type: object
+      additionalProperties: false
+      required: [detail]
+      properties:
+        detail:
+          $ref: "#/components/schemas/ErrorBody"
+  responses:
+    KernelError:
+      description: FastAPI HTTPException detail envelope (PHX-G174)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/GatewayDetailError"

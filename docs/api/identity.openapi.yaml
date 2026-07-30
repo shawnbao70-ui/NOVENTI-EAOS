@@ -1,0 +1,1125 @@
+openapi: 3.1.0
+info:
+  title: NOVENTI EAOS Identity API
+  version: 1.0.6
+  description: >
+    PHX-006 normative HTTP contract. Security-sensitive ExecutionContext fields
+    are derived by the trusted authentication boundary and are never accepted
+    from client headers or request bodies. PHX-G166 aligns live Gateway errors
+    to `GatewayDetailError` (`application/json` + `detail`); ProblemDetails
+    schema remains documented as a deferred dialect, not the live envelope.
+    PHX-G178 documents named Identity status codes (400/403/404/409/503).
+servers:
+  - url: /v1
+security:
+  - bearerAuth: []
+tags:
+  - name: Subjects
+  - name: AI Employees
+  - name: Credentials
+  - name: Sessions
+  - name: Governors
+paths:
+  /identity/status:
+    get:
+      operationId: getIdentityStatus
+      summary: Read-only Foundation status posture
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Identity Foundation status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FoundationStatusEnvelope"
+        default:
+          $ref: "#/components/responses/Error"
+  /identity/subjects:
+    post:
+      operationId: registerSubject
+      tags: [Subjects]
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterSubjectRequest"
+      responses:
+        "201":
+          $ref: "#/components/responses/UuidCreated"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid subject payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Duplicate subject
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Identity service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/Error"
+  /identity/subjects/{subjectId}:
+    get:
+      operationId: resolveSubject
+      tags: [Subjects]
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/SubjectId"
+      responses:
+        "200":
+          description: Subject view
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subject"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Subject not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Identity service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/Error"
+  /identity/ai-employees:
+    post:
+      operationId: registerAIEmployee
+      tags: [AI Employees]
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterAIEmployeeRequest"
+      responses:
+        "201":
+          $ref: "#/components/responses/UuidCreated"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid AI employee payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "403":
+          description: Platform governor required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Identity service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/Error"
+  /identity/ai-employees/{aiSubjectId}/profile:
+    get:
+      operationId: getAIProfile
+      tags: [AI Employees]
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/AISubjectId"
+      responses:
+        "200":
+          description: Governed AI profile references
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AIEmployeeProfile"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "400":
+          description: AI profile missing or invalid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "403":
+          description: Platform governor required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Identity service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/Error"
+    patch:
+      operationId: updateAIProfile
+      tags: [AI Employees]
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/AISubjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAIProfileRequest"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AIEmployeeProfile"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: AI profile missing, invalid, or version conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "403":
+          description: Platform governor required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Identity service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/Error"
+  /identity/ai-employees/{aiSubjectId}/assignments:
+    post:
+      operationId: assignAIToTenant
+      tags: [AI Employees]
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/AISubjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssignAIRequest"
+      responses:
+        "201":
+          $ref: "#/components/responses/UuidCreated"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: AI not assignable or assignment conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: AI subject not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Identity service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/Error"
+  /identity/ai-employees/{aiSubjectId}/reassignments:
+    post:
+      operationId: coordinateAIReassignment
+      description: >
+        L2 coordinated entry point. Atomically ends old Organization memberships
+        before moving or archiving the AI assignment.
+      tags: [AI Employees]
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/AISubjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReassignAIRequest"
+      responses:
+        "201":
+          $ref: "#/components/responses/UuidCreated"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid reassignment or conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "403":
+          description: Platform governor required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: AI subject not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Identity service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/Error"
+  /identity/credentials:
+    post:
+      operationId: bindCredential
+      tags: [Credentials]
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BindCredentialRequest"
+      responses:
+        "201":
+          $ref: "#/components/responses/UuidCreated"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid credential payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "403":
+          description: Secret leak forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Subject not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Identity service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/Error"
+  /identity/credentials/{credentialId}/validation:
+    get:
+      operationId: validateCredential
+      tags: [Credentials]
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/CredentialId"
+      responses:
+        "200":
+          description: Non-secret credential validation view
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CredentialValidation"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Credential invalid, revoked, or expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Identity service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/Error"
+  /identity/credentials/{credentialId}/revocation:
+    post:
+      operationId: revokeCredential
+      tags: [Credentials]
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/CredentialId"
+      requestBody:
+        $ref: "#/components/requestBodies/Reason"
+      responses:
+        "204":
+          description: Revoked or already revoked
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Revocation reason required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Credential invalid or already revoked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Identity service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/Error"
+  /identity/sessions:
+    post:
+      operationId: createSession
+      tags: [Sessions]
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSessionRequest"
+      responses:
+        "201":
+          description: Session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionCreated"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid session payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Credential invalid, revoked, or expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Identity service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/Error"
+  /identity/sessions/{sessionId}/validation:
+    get:
+      operationId: validateSession
+      tags: [Sessions]
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/SessionId"
+      responses:
+        "200":
+          description: Session validation view
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionValidation"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Session expired or revoked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Identity service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/Error"
+  /identity/sessions/{sessionId}/revocation:
+    post:
+      operationId: revokeSession
+      tags: [Sessions]
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/SessionId"
+      requestBody:
+        $ref: "#/components/requestBodies/Reason"
+      responses:
+        "204":
+          description: Revoked or already revoked
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Revocation reason required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Identity service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/Error"
+  /identity/platform-governors:
+    post:
+      operationId: grantPlatformIdentityGovernor
+      tags: [Governors]
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GovernorGrantRequest"
+      responses:
+        "201":
+          $ref: "#/components/responses/UuidCreated"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid governor grant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "403":
+          description: Bootstrap/auth denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Governor already active
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Identity service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/Error"
+  /identity/platform-governors/{subjectId}/revocation:
+    post:
+      operationId: revokePlatformIdentityGovernor
+      tags: [Governors]
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/SubjectId"
+      requestBody:
+        $ref: "#/components/requestBodies/Reason"
+      responses:
+        "204":
+          description: Governor revoked
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Governor not found or last-active denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "403":
+          description: Bootstrap/auth denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Identity service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/Error"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  parameters:
+    CorrelationId:
+      name: X-Correlation-ID
+      in: header
+      required: false
+      schema:
+        type: string
+        maxLength: 128
+    SubjectId:
+      name: subjectId
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/Uuid"
+    AISubjectId:
+      name: aiSubjectId
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/Uuid"
+    CredentialId:
+      name: credentialId
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/Uuid"
+    SessionId:
+      name: sessionId
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/Uuid"
+  requestBodies:
+    Reason:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ReasonRequest"
+  responses:
+    UuidCreated:
+      description: Resource created
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/UuidResult"
+    Error:
+      description: FastAPI HTTPException detail envelope (PHX-G166 live shape)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/GatewayDetailError"
+  schemas:
+    FoundationStatusEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/FoundationStatusData"
+    FoundationStatusData:
+      type: object
+      additionalProperties: false
+      description: PHX-G192 Foundation status body field parity.
+      required: [writable, supported_surfaces]
+      properties:
+        writable:
+          type: boolean
+          const: false
+        supported_surfaces:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          minItems: 1
+    Uuid:
+      type: string
+      format: uuid
+    UuidResult:
+      type: object
+      additionalProperties: false
+      required: [id, data]
+      description: >
+        Unified UuidResult dialect (PHX-G170): `id` and `data` carry the same UUID.
+      properties:
+        id:
+          $ref: "#/components/schemas/Uuid"
+        data:
+          $ref: "#/components/schemas/Uuid"
+        audit_id:
+          $ref: "#/components/schemas/Uuid"
+    ExternalRef:
+      type: object
+      additionalProperties: false
+      required: [system, external_id]
+      properties:
+        system:
+          type: string
+          minLength: 1
+          maxLength: 100
+        external_id:
+          type: string
+          minLength: 1
+          maxLength: 255
+    RegisterSubjectRequest:
+      type: object
+      additionalProperties: false
+      required: [subject_type, display_name]
+      properties:
+        subject_type:
+          type: string
+          enum: [human, service, device, application, plugin]
+        display_name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        external_refs:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExternalRef"
+    Subject:
+      type: object
+      additionalProperties: false
+      required: [id, subject_type, display_name, status, version]
+      properties:
+        id:
+          $ref: "#/components/schemas/Uuid"
+        subject_type:
+          type: string
+        display_name:
+          type: string
+        status:
+          type: string
+          enum: [active, archived, revoked, ended]
+        version:
+          type: integer
+          minimum: 1
+    RegisterAIEmployeeRequest:
+      type: object
+      additionalProperties: false
+      required: [display_name, capabilities_profile, owner_policy]
+      properties:
+        display_name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        capabilities_profile:
+          type: string
+          minLength: 1
+          maxLength: 255
+        owner_policy:
+          type: string
+          minLength: 1
+          maxLength: 255
+    AIEmployeeProfile:
+      type: object
+      additionalProperties: false
+      required: [ai_subject_id, capabilities_profile_ref, owner_policy_ref, version]
+      properties:
+        ai_subject_id:
+          $ref: "#/components/schemas/Uuid"
+        capabilities_profile_ref:
+          type: string
+        owner_policy_ref:
+          type: string
+        version:
+          type: integer
+          minimum: 1
+    UpdateAIProfileRequest:
+      type: object
+      additionalProperties: false
+      required: [expected_version, capabilities_profile, owner_policy]
+      properties:
+        expected_version:
+          type: integer
+          minimum: 1
+        capabilities_profile:
+          type: string
+          minLength: 1
+          maxLength: 255
+        owner_policy:
+          type: string
+          minLength: 1
+          maxLength: 255
+    AssignAIRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        management_policy:
+          type: string
+          default: tenant_managed
+          maxLength: 255
+    ReassignAIRequest:
+      type: object
+      additionalProperties: false
+      required: [mode]
+      properties:
+        to_tenant_id:
+          $ref: "#/components/schemas/Uuid"
+        mode:
+          type: string
+          enum: [reassign, inherit, archive]
+        management_policy:
+          type: string
+          default: tenant_managed
+          maxLength: 255
+      allOf:
+        - if:
+            properties:
+              mode:
+                const: archive
+          then: {}
+          else:
+            required: [to_tenant_id]
+    BindCredentialRequest:
+      type: object
+      additionalProperties: false
+      required: [subject_id, credential_kind, secret_handle]
+      properties:
+        subject_id:
+          $ref: "#/components/schemas/Uuid"
+        credential_kind:
+          type: string
+          minLength: 1
+          maxLength: 64
+        secret_handle:
+          type: string
+          description: Opaque vault reference; never a plaintext secret.
+          minLength: 1
+        expires_at:
+          type: [string, "null"]
+          format: date-time
+    CredentialValidation:
+      type: object
+      additionalProperties: false
+      required: [credential_id, valid, status]
+      properties:
+        credential_id:
+          $ref: "#/components/schemas/Uuid"
+        valid:
+          type: boolean
+        status:
+          type: string
+        expires_at:
+          type: [string, "null"]
+          format: date-time
+    CreateSessionRequest:
+      type: object
+      additionalProperties: false
+      required: [credential_id]
+      properties:
+        credential_id:
+          $ref: "#/components/schemas/Uuid"
+        ttl_minutes:
+          type: integer
+          minimum: 1
+          maximum: 1440
+          default: 60
+    SessionCreated:
+      type: object
+      additionalProperties: false
+      required: [session_id, expires_at]
+      properties:
+        session_id:
+          $ref: "#/components/schemas/Uuid"
+        expires_at:
+          type: string
+          format: date-time
+        audit_id:
+          $ref: "#/components/schemas/Uuid"
+    SessionValidation:
+      type: object
+      additionalProperties: false
+      required: [session_id, valid, status, expires_at]
+      properties:
+        session_id:
+          $ref: "#/components/schemas/Uuid"
+        valid:
+          type: boolean
+        status:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+    GovernorGrantRequest:
+      type: object
+      additionalProperties: false
+      required: [subject_id]
+      properties:
+        subject_id:
+          $ref: "#/components/schemas/Uuid"
+    ReasonRequest:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+    ContextElevationDenialDetails:
+      type: object
+      additionalProperties: false
+      description: >
+        Known details shape for code TERMINAL_CONTEXT_ELEVATION_DENIED
+        (live /context/echo elevation deny). PHX-G208/G220 per-code honesty;
+        other error codes may use different details keys.
+      required: [fields]
+      properties:
+        fields:
+          type: array
+          items:
+            type: string
+          description: Sorted denied elevation field names.
+    ErrorBody:
+      type: object
+      additionalProperties: false
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: Stable code from docs/architecture/ERROR_CODES.md.
+        message:
+          type: string
+        details:
+          description: >
+            Optional structured denial context (G202/G204/G216/G220). Known
+            elevation shape is composed via anyOf $ref to
+            ContextElevationDenialDetails; residual object allows other keys.
+          anyOf:
+            - $ref: "#/components/schemas/ContextElevationDenialDetails"
+            - type: object
+              additionalProperties: true
+    ValidationErrorItem:
+      type: object
+      description: FastAPI/Pydantic request validation error item.
+      required: [loc, msg, type]
+      additionalProperties: true
+      properties:
+        loc:
+          type: array
+          items:
+            oneOf:
+              - type: string
+              - type: integer
+        msg:
+          type: string
+        type:
+          type: string
+    HTTPValidationError:
+      type: object
+      description: FastAPI request validation envelope (422 detail list).
+      additionalProperties: false
+      required: [detail]
+      properties:
+        detail:
+          type: array
+          items:
+            $ref: "#/components/schemas/ValidationErrorItem"
+    GatewayDetailError:
+      type: object
+      additionalProperties: false
+      required: [detail]
+      properties:
+        detail:
+          $ref: "#/components/schemas/ErrorBody"
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      description: Deferred ProblemDetails dialect (not live Gateway envelope).
+      required: [type, title, status, code]
+      properties:
+        type:
+          type: string
+          format: uri-reference
+        title:
+          type: string
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+        code:
+          type: string
+          description: Stable code from docs/architecture/ERROR_CODES.md.
+        correlation_id:
+          type: string
+          maxLength: 128
+        details:
+          description: >
+            Optional structured denial context (G202/G204/G216/G220). Known
+            elevation shape is composed via anyOf $ref to
+            ContextElevationDenialDetails; residual object allows other keys.
+          anyOf:
+            - $ref: "#/components/schemas/ContextElevationDenialDetails"
+            - type: object
+              additionalProperties: true

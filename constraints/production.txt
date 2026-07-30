@@ -1,0 +1,15 @@
+# PHX-G410 — production/runtime constraint lock (direct deps)
+# Strategy: one constraints file; install with:
+#   pip install -e ".[persistence,api,dev]" -c constraints/production.txt
+# Versions recorded from the G410 reference engineer workstation (2026-07-27).
+# Bump only via explicit remediation / release slice — do not silent-float.
+
+fastapi==0.136.3
+httpx==0.28.1
+uvicorn==0.48.0
+PyYAML==6.0.3
+alembic==1.18.5
+SQLAlchemy==2.0.51
+psycopg[binary]==3.3.4
+cryptography==46.0.7
+pytest==9.1.1

@@ -1,0 +1,1520 @@
+openapi: 3.1.0
+info:
+  title: NOVENTI EAOS Auth API
+  version: 1.3.27
+  description: |
+    PHX-G131–G134 / G145 / G147 / G151 / G154 / G160 / G174 / G177 / G185 / G187–G190 Foundation
+    auth contract. Documents desensitized status probes, OIDC Authorization Code
+    login/callback/providers, Bearer-gated refresh/logout, the IdP MFA enrollment
+    redirect exit (`GET /auth/oidc/mfa-enrollment`), the read-only OIDC login product
+    posture (`oidc_login_product`; Auth Code CTAs; fail-closed when unconfigured), the
+    MFA/WebAuthn product posture (`webauthn_product`; default registration_enabled=false;
+    env-gated live mint under PHX-G160 / DAL-G008), and WebAuthn ceremony routes
+    (`POST /auth/webauthn/register/options` and `/verify`). Default → 503
+    `GATEWAY_WEBAUTHN_REGISTRATION_DISABLED` with ceremony_step observability.
+    PHX-G160: when `EAOS_WEBAUTHN_REGISTRATION_ENABLED=true` plus
+    `EAOS_WEBAUTHN_RP_ID` / `EAOS_WEBAUTHN_ORIGIN`, challenge-bound live credential
+    mint into Identity is available (`attestation_crypto_verified` remains deferred).
+    PHX-G174 aligns KernelError to GatewayDetailError (`{detail}`) envelope.
+    PHX-G177 documents named OIDC login/callback/refresh/logout status codes
+    (400/401/403/502/503). PHX-G185 tightens `WebauthnProductPosture` to emitted
+    field parity (additionalProperties false; milestone const PHX-G160).
+    PHX-G187 tightens `OidcLoginProductPosture` to emitted field parity
+    (additionalProperties false; milestone const PHX-G147).
+    PHX-G188 documents dedicated `JwtStatusData` / `JwtDenylistPosture` for
+    `GET /auth/jwt/status` (no jti list).
+    PHX-G189 documents dedicated `IdpStatusData` for `GET /auth/idp/status`
+    (top-level + jwt/registry/federation field parity).
+    PHX-G190 documents dedicated `OidcStatusData` for `GET /auth/oidc/status`
+    and nests it under IdP status `oidc`.
+    Secrets and IdP refresh_token plaintext are never returned. Single-path
+    `/auth/webauthn/register` remains ABSENT.
+servers:
+  - url: /v1
+security: []
+paths:
+  /auth/oidc/status:
+    get:
+      operationId: getOidcStatus
+      summary: Read-only OIDC configuration posture
+      tags: [Auth]
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Desensitized OIDC status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OidcStatusEnvelope"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /auth/idp/status:
+    get:
+      operationId: getIdpStatus
+      summary: Read-only multi-IdP / JWT aggregation posture
+      tags: [Auth]
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Desensitized IdP status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdpStatusEnvelope"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /auth/jwt/status:
+    get:
+      operationId: getJwtStatus
+      summary: Read-only JWT / denylist posture
+      tags: [Auth]
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Desensitized JWT status (no jti list)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JwtStatusEnvelope"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /auth/oidc/providers:
+    get:
+      operationId: listOidcLoginProviders
+      summary: Public desensitized OIDC login provider catalog
+      tags: [Auth]
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Provider catalog
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OidcProvidersEnvelope"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /auth/oidc/mfa-enrollment:
+    get:
+      operationId: redirectOidcMfaEnrollment
+      summary: Redirect to configured IdP MFA enrollment URL
+      description: >
+        Opt-in exit via EAOS_OIDC_MFA_ENROLLMENT_URL (https, or http loopback
+        for local tests). This is not a WebAuthn registration product page.
+      tags: [Auth]
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "302":
+          description: Redirect to IdP MFA enrollment URL
+          headers:
+            Location:
+              required: true
+              schema:
+                type: string
+                format: uri
+        "503":
+          description: Enrollment URL unset or invalid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /auth/webauthn/register/options:
+    post:
+      operationId: mintWebauthnRegisterOptions
+      summary: WebAuthn registration options (env-gated live mint)
+      description: >
+        PHX-G160 Eng Explicit Defer `2` live mint under explicit PO (DAL-G008).
+        Default OFF → 503 GATEWAY_WEBAUTHN_REGISTRATION_DISABLED with
+        ceremony_step=register_options. When EAOS_WEBAUTHN_REGISTRATION_ENABLED=true
+        and EAOS_WEBAUTHN_RP_ID / EAOS_WEBAUTHN_ORIGIN are set, mints
+        PublicKeyCredentialCreationOptions (challenge-bound). Missing RP config
+        → 503 GATEWAY_WEBAUTHN_RP_CONFIG_REQUIRED. Packed/TPM attestation crypto
+        remains deferred. Single-path /auth/webauthn/register remains ABSENT.
+      tags: [Auth]
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WebauthnRegisterOptionsRequest"
+      responses:
+        "200":
+          description: PublicKeyCredentialCreationOptions (challenge-bound)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebauthnRegisterOptionsResponse"
+        "422":
+          description: Closed-schema validation failure on options body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "503":
+          description: >
+            Registration disabled (default) or RP_ID/ORIGIN missing when enabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebauthnCeremonyStubError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /auth/webauthn/register/verify:
+    post:
+      operationId: mintWebauthnRegisterVerify
+      summary: WebAuthn registration verify (env-gated live mint)
+      description: >
+        PHX-G160 Eng Explicit Defer `2` live mint under explicit PO (DAL-G008).
+        Default OFF → 503 GATEWAY_WEBAUTHN_REGISTRATION_DISABLED with
+        ceremony_step=register_verify. When enabled + RP configured, verifies
+        challenge/origin/type binding and mints Identity webauthn credential.
+        attestation_crypto_verified remains false (packed/TPM crypto Explicit Out).
+      tags: [Auth]
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WebauthnRegisterVerifyRequest"
+      responses:
+        "200":
+          description: Challenge-bound credential mint result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebauthnRegisterVerifyResponse"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Challenge or attestation invalid (named denial PHX-G248)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebauthnVerifyDenialError"
+        "503":
+          description: >
+            Registration disabled (default) or RP_ID/ORIGIN missing when enabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebauthnCeremonyStubError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /auth/oidc/login:
+    get:
+      operationId: beginOidcLogin
+      summary: Start OIDC Authorization Code + PKCE login (redirect)
+      tags: [Auth]
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+        - name: provider
+          in: query
+          required: false
+          schema:
+            type: string
+            minLength: 1
+          description: Optional login provider key when multi-provider catalog is enabled
+      responses:
+        "302":
+          description: Redirect to IdP authorize endpoint
+          headers:
+            Location:
+              required: true
+              schema:
+                type: string
+                format: uri
+        "400":
+          description: Unknown login provider key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: OIDC not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /auth/oidc/callback:
+    get:
+      operationId: completeOidcCallback
+      summary: OIDC callback; browser redirect or JSON token payload
+      tags: [Auth]
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+        - name: code
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: error
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: Accept
+          in: header
+          required: false
+          schema:
+            type: string
+          description: Prefer application/json for token JSON instead of Terminal fragment redirect
+      responses:
+        "200":
+          description: EAOS Bearer token payload (Accept application/json)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OidcTokenEnvelope"
+        "302":
+          description: Redirect to Smart Terminal fragment with access_token
+          headers:
+            Location:
+              required: true
+              schema:
+                type: string
+        "400":
+          description: OIDC denied or invalid state/code/tenant claim
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "401":
+          description: Invalid id_token claims (e.g. nonce/sub)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "403":
+          description: Tenant IdP federation binding denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "502":
+          description: Upstream IdP token/JWKS failure
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: JWT/OIDC unconfigured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /auth/oidc/refresh:
+    post:
+      operationId: refreshOidcSession
+      summary: Refresh EAOS Bearer via stored IdP refresh binding
+      tags: [Auth]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Rotated EAOS Bearer payload (no IdP refresh_token)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OidcTokenEnvelope"
+        "400":
+          description: EAOS token missing jti for refresh binding
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "401":
+          description: Bearer required, invalid, or no refresh binding
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "502":
+          description: Upstream IdP refresh failure
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Refresh disabled or store unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /auth/oidc/logout:
+    post:
+      operationId: logoutOidcSession
+      summary: Revoke EAOS jti locally; optional RP-Logout URL
+      tags: [Auth]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Local revoke result (may include end_session_url)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OidcLogoutEnvelope"
+        "400":
+          description: EAOS token missing jti for logout
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "401":
+          description: Bearer required or invalid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Store or end_session misconfigured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: EAOS JWT from OIDC callback/refresh (not IdP access token)
+  parameters:
+    CorrelationId:
+      name: X-Correlation-Id
+      in: header
+      required: false
+      schema:
+        type: string
+        minLength: 1
+  schemas:
+
+    OidcLoginProviderPublicItem:
+      type: object
+      additionalProperties: false
+      required: [key, issuer, has_end_session]
+      description: >
+        Desensitized OIDC login provider row (PHX-G236). Mirrors
+        oidc_login_providers_public() emit.
+      properties:
+        key:
+          type: string
+          minLength: 1
+        issuer:
+          type: string
+          minLength: 1
+        has_end_session:
+          type: boolean
+        end_session_endpoint:
+          type: string
+          minLength: 1
+    IdpRegistryIssuerStatusItem:
+      type: object
+      additionalProperties: false
+      required: [id, issuer, jwks_url, has_jwks_json, status, version]
+      description: >
+        IdP registry issuer row on status posture (PHX-G236). Mirrors
+        registry_status_view().issuers emit.
+      properties:
+        id:
+          type: string
+          format: uuid
+        issuer:
+          type: string
+          minLength: 1
+        jwks_url:
+          type: string
+          minLength: 1
+        has_jwks_json:
+          type: boolean
+        status:
+          type: string
+        version:
+          type: integer
+          minimum: 0
+    OidcStatusEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/OidcStatusData"
+    OidcStatusData:
+      type: object
+      additionalProperties: false
+      description: >
+        PHX-G190 OIDC status. Mirrors `oidc_status()` emit. Never includes secrets.
+      required:
+        - enabled
+        - secrets_exposed
+        - pkce_s256_required
+        - issuer
+        - authorization_endpoint
+        - token_endpoint
+        - redirect_uri
+        - scopes
+        - discovery
+        - discovery_url
+        - jwks_uri
+        - jwks_wire
+        - discovery_registry_write
+        - refresh
+        - refresh_store
+        - refresh_encrypt
+        - refresh_encrypt_key_count
+        - refresh_encrypt_key_provider
+        - refresh_encrypt_kms_backend
+        - refresh_reencrypt_on_read
+        - tenant_idp_federation
+        - required_claims
+        - required_claims_enabled
+        - required_amr
+        - required_amr_enabled
+        - required_acr
+        - required_acr_enabled
+        - role_claim
+        - role_claim_enabled
+        - role_map_size
+        - require_mapped_role
+        - login_providers_enabled
+        - login_providers
+        - authorize_stepup_enabled
+        - authorize_acr_values
+        - authorize_prompt
+        - mfa_enrollment_enabled
+        - mfa_enrollment_url
+        - oidc_login_product
+        - webauthn_product
+        - rp_logout
+        - end_session_endpoint
+        - has_post_logout_redirect
+      properties:
+        enabled:
+          type: boolean
+        secrets_exposed:
+          type: boolean
+          const: false
+        pkce_s256_required:
+          type: boolean
+          const: true
+        issuer:
+          type: ["string", "null"]
+        authorization_endpoint:
+          type: ["string", "null"]
+        token_endpoint:
+          type: ["string", "null"]
+        redirect_uri:
+          type: ["string", "null"]
+        scopes:
+          type: string
+        discovery:
+          type: boolean
+        discovery_url:
+          type: ["string", "null"]
+        jwks_uri:
+          type: ["string", "null"]
+        jwks_wire:
+          type: boolean
+        discovery_registry_write:
+          type: boolean
+        refresh:
+          type: boolean
+        refresh_store:
+          type: string
+        refresh_encrypt:
+          type: string
+        refresh_encrypt_key_count:
+          type: integer
+          minimum: 0
+        refresh_encrypt_key_provider:
+          type: string
+        refresh_encrypt_kms_backend:
+          type: ["string", "null"]
+        refresh_reencrypt_on_read:
+          type: boolean
+        tenant_idp_federation:
+          type: boolean
+        required_claims:
+          type: array
+          items:
+            type: string
+        required_claims_enabled:
+          type: boolean
+        required_amr:
+          type: array
+          items:
+            type: string
+        required_amr_enabled:
+          type: boolean
+        required_acr:
+          type: array
+          items:
+            type: string
+        required_acr_enabled:
+          type: boolean
+        role_claim:
+          type: ["string", "null"]
+        role_claim_enabled:
+          type: boolean
+        role_map_size:
+          type: integer
+          minimum: 0
+        require_mapped_role:
+          type: boolean
+        login_providers_enabled:
+          type: boolean
+        login_providers:
+          type: array
+          items:
+            $ref: "#/components/schemas/OidcLoginProviderPublicItem"
+        authorize_stepup_enabled:
+          type: boolean
+        authorize_acr_values:
+          type: ["string", "null"]
+        authorize_prompt:
+          type: ["string", "null"]
+        mfa_enrollment_enabled:
+          type: boolean
+        mfa_enrollment_url:
+          type: ["string", "null"]
+        oidc_login_product:
+          $ref: "#/components/schemas/OidcLoginProductPosture"
+        webauthn_product:
+          $ref: "#/components/schemas/WebauthnProductPosture"
+        rp_logout:
+          type: boolean
+        end_session_endpoint:
+          type: ["string", "null"]
+        has_post_logout_redirect:
+          type: boolean
+    IdpStatusEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/IdpStatusData"
+    IdpStatusData:
+      type: object
+      additionalProperties: false
+      description: >
+        PHX-G55/G189 multi-IdP aggregation status. Mirrors `idp_status()` emit
+        top-level keys. Nested `oidc` uses OidcStatusData (PHX-G190). JWT aggregate / registry /
+        federation are field-honest.
+      required:
+        - writable
+        - config_source
+        - oidc
+        - jwt
+        - registry
+        - federation
+      properties:
+        writable:
+          type: boolean
+          const: false
+        config_source:
+          type: string
+          const: environment+registry
+        oidc:
+          $ref: "#/components/schemas/OidcStatusData"
+        jwt:
+          $ref: "#/components/schemas/IdpJwtAggregatePosture"
+        registry:
+          $ref: "#/components/schemas/IdpRegistryStatusPosture"
+        federation:
+          $ref: "#/components/schemas/IdpFederationStatusPosture"
+    IdpJwtAggregatePosture:
+      type: object
+      additionalProperties: false
+      required:
+        - multi_issuer
+        - issuer
+        - audience
+        - has_secret
+        - has_jwks_url
+        - has_jwks_json
+        - require_jwt
+        - allow_dev_headers
+        - denylist_enabled
+        - issuers
+      properties:
+        multi_issuer:
+          type: boolean
+        issuer:
+          type: ["string", "null"]
+        audience:
+          type: ["string", "null"]
+        has_secret:
+          type: boolean
+        has_jwks_url:
+          type: boolean
+        has_jwks_json:
+          type: boolean
+        require_jwt:
+          type: boolean
+        allow_dev_headers:
+          type: boolean
+        denylist_enabled:
+          type: boolean
+        issuers:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [issuer, jwks_url, has_jwks_json]
+            properties:
+              issuer:
+                type: string
+              jwks_url:
+                type: ["string", "null"]
+              has_jwks_json:
+                type: boolean
+    DiscoveryRegistryWritePosture:
+      type: object
+      additionalProperties: false
+      required: [enabled, action]
+      description: >
+        Opt-in OIDC Discovery → IdP registry write posture (PHX-G238).
+        Mirrors maybe_write_discovery_to_registry() / discovery_registry_write_status().
+      properties:
+        enabled:
+          type: boolean
+        action:
+          type: string
+          enum: [skipped, error, unchanged, created, updated, reactivated]
+        issuer:
+          type: string
+          minLength: 1
+        jwks_url:
+          type: string
+          minLength: 1
+        id:
+          type: string
+          format: uuid
+        version:
+          type: integer
+          minimum: 0
+        error:
+          type: string
+    IdpRegistryStatusPosture:
+      type: object
+      additionalProperties: false
+      required: [writable, store, issuers]
+      properties:
+        writable:
+          type: boolean
+        store:
+          type: string
+          enum: [process_memory, sql, unavailable]
+        error:
+          type: string
+        discovery_write:
+          description: >
+            Last discovery registry write posture, or null when unset (G238).
+          anyOf:
+            - $ref: "#/components/schemas/DiscoveryRegistryWritePosture"
+            - type: "null"
+        issuers:
+          type: array
+          items:
+            $ref: "#/components/schemas/IdpRegistryIssuerStatusItem"
+    IdpFederationMatrixSummary:
+      type: object
+      additionalProperties: false
+      required: [cell_count, tenant_count, issuer_count]
+      description: >
+        Compact matrix counts on IdP federation status posture (PHX-G230).
+      properties:
+        cell_count:
+          type: integer
+          minimum: 0
+        tenant_count:
+          type: integer
+          minimum: 0
+        issuer_count:
+          type: integer
+          minimum: 0
+    IdpFederationStatusPosture:
+      type: object
+      additionalProperties: false
+      required:
+        - enabled
+        - store
+        - planes
+        - binding_count
+        - active_count
+        - matrix
+      properties:
+        enabled:
+          type: boolean
+        store:
+          type: string
+          enum: [process_memory, sql, unavailable]
+        error:
+          type: string
+        planes:
+          type: array
+          items:
+            type: string
+            minLength: 1
+        binding_count:
+          type: integer
+          minimum: 0
+        active_count:
+          type: integer
+          minimum: 0
+        matrix:
+          $ref: "#/components/schemas/IdpFederationMatrixSummary"
+    JwtStatusEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/JwtStatusData"
+    JwtStatusData:
+      type: object
+      additionalProperties: false
+      description: >
+        PHX-G96/G188 JWT / denylist status. Mirrors `jwt_status_view()` emit.
+        Never lists jti values or secrets.
+      required:
+        - writable
+        - secrets_exposed
+        - production_auth_fail_closed
+        - require_jwt
+        - allow_dev_headers
+        - multi_issuer
+        - issuer
+        - audience
+        - has_secret
+        - has_jwks_url
+        - has_jwks_json
+        - issuer_count
+        - denylist
+      properties:
+        writable:
+          type: boolean
+          const: false
+        secrets_exposed:
+          type: boolean
+          const: false
+        production_auth_fail_closed:
+          type: boolean
+          const: true
+        require_jwt:
+          type: boolean
+        allow_dev_headers:
+          type: boolean
+        multi_issuer:
+          type: boolean
+        issuer:
+          type: ["string", "null"]
+        audience:
+          type: ["string", "null"]
+        has_secret:
+          type: boolean
+        has_jwks_url:
+          type: boolean
+        has_jwks_json:
+          type: boolean
+        issuer_count:
+          type: integer
+          minimum: 0
+        denylist:
+          $ref: "#/components/schemas/JwtDenylistPosture"
+    JwtDenylistPosture:
+      type: object
+      additionalProperties: false
+      required:
+        - enabled
+        - has_json
+        - has_url
+        - cache_seconds
+        - configured_entry_count
+        - load_error
+        - runtime_revoked_count
+      properties:
+        enabled:
+          type: boolean
+        has_json:
+          type: boolean
+        has_url:
+          type: boolean
+        cache_seconds:
+          type: integer
+          minimum: 0
+        configured_entry_count:
+          type: ["integer", "null"]
+          minimum: 0
+        load_error:
+          type: ["string", "null"]
+        runtime_revoked_count:
+          type: integer
+          minimum: 0
+        url:
+          type: string
+          minLength: 1
+          description: Present only when a denylist URL is configured
+    OidcLoginProductPosture:
+      type: object
+      additionalProperties: false
+      description: >
+        PHX-G147/G187 Foundation OIDC login product posture. Read-only naming of
+        the existing Authorization Code surface (G40/G61/G132). Mirrors live
+        `oidc_login_product_posture()` emit. Unconfigured OIDC remains
+        fail-closed (503). No new auth protocol in this slice.
+      required:
+        - surface
+        - milestone
+        - protocol
+        - authorization_code_enabled
+        - live_routes
+        - fail_closed_when_unconfigured
+        - fail_closed
+        - fail_closed_reasons
+      properties:
+        surface:
+          type: string
+          const: foundation_oidc_login_product
+        milestone:
+          type: string
+          const: PHX-G147
+        protocol:
+          type: string
+          const: oauth2_authorization_code
+        authorization_code_enabled:
+          type: boolean
+        live_routes:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          minItems: 1
+        fail_closed_when_unconfigured:
+          type: boolean
+          const: true
+        fail_closed:
+          type: boolean
+        fail_closed_reasons:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          minItems: 1
+    WebauthnProductPosture:
+      type: object
+      additionalProperties: false
+      description: >
+        PHX-G145/G151/G154/G160/G185 Foundation MFA/WebAuthn product posture.
+        Read-only; mirrors live `webauthn_product_posture()` emit. Packed/TPM
+        attestation crypto remains deferred. Single-path /auth/webauthn/register
+        remains ABSENT. IdP MFA enrollment redirect (G89/G134) remains available
+        independently.
+      required:
+        - surface
+        - milestone
+        - webauthn_registration_enabled
+        - registration_enabled
+        - webauthn_rp_configured
+        - webauthn_live_mint_ready
+        - registration_routes
+        - ceremony_stub_observability
+        - registration_default_off
+        - attestation_crypto_verified
+        - attestation_mode
+        - mfa_enrollment_path
+        - mfa_enrollment_enabled
+        - mfa_enrollment_url
+        - live_enroll_path
+        - fail_closed_reasons
+      properties:
+        surface:
+          type: string
+          const: foundation_mfa_webauthn_product
+        milestone:
+          type: string
+          const: PHX-G160
+        webauthn_registration_enabled:
+          type: boolean
+        registration_enabled:
+          type: boolean
+        webauthn_rp_configured:
+          type: boolean
+        webauthn_live_mint_ready:
+          type: boolean
+        registration_routes:
+          type: array
+          items:
+            type: string
+          minItems: 2
+          description: >
+            Named ceremony paths (OpenAPI /auth prefix). Lists
+            /auth/webauthn/register/options and /auth/webauthn/register/verify.
+        ceremony_stub_observability:
+          type: boolean
+          description: G154 — 503 detail includes ceremony_step without mint when disabled
+        registration_default_off:
+          type: boolean
+          const: true
+        attestation_crypto_verified:
+          type: boolean
+          const: false
+          description: Challenge binding does not claim packed/TPM attestation verification.
+        attestation_mode:
+          type: string
+          enum: [disabled, challenge_bound]
+          description: challenge_bound when live mint ready; otherwise disabled
+        mfa_enrollment_path:
+          type: string
+          const: /auth/oidc/mfa-enrollment
+        mfa_enrollment_enabled:
+          type: boolean
+        mfa_enrollment_url:
+          type: [string, "null"]
+          format: uri
+        live_enroll_path:
+          type: string
+          enum:
+            - webauthn_challenge_bound_mint_g160
+            - idp_redirect_g89_g134
+        fail_closed_reasons:
+          type: array
+          items:
+            type: string
+          minItems: 1
+    WebauthnRpEntity:
+      type: object
+      additionalProperties: false
+      description: Relying Party entity in PublicKeyCredentialCreationOptions (PHX-G240).
+      required: [id, name]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+    WebauthnUserEntity:
+      type: object
+      additionalProperties: false
+      description: User entity in PublicKeyCredentialCreationOptions (PHX-G240).
+      required: [id, name, displayName]
+      properties:
+        id:
+          type: string
+          description: base64url-encoded user handle from live mint.
+        name:
+          type: string
+        displayName:
+          type: string
+    WebauthnPubKeyCredParam:
+      type: object
+      additionalProperties: false
+      description: COSE algorithm preference entry (live mint -7/-257).
+      required: [type, alg]
+      properties:
+        type:
+          type: string
+          const: public-key
+        alg:
+          type: integer
+    WebauthnAuthenticatorSelection:
+      type: object
+      additionalProperties: false
+      description: authenticatorSelection from live mint_registration_options.
+      required: [residentKey, userVerification]
+      properties:
+        residentKey:
+          type: string
+          const: preferred
+        userVerification:
+          type: string
+          const: preferred
+    PublicKeyCredentialCreationOptions:
+      type: object
+      additionalProperties: false
+      description: >
+        Live mint shape from mint_registration_options publicKey (PHX-G240).
+        Does not claim attestation-crypto verification (HARD HOLD remains).
+      required:
+        - rp
+        - user
+        - challenge
+        - pubKeyCredParams
+        - timeout
+        - attestation
+        - authenticatorSelection
+      properties:
+        rp:
+          $ref: "#/components/schemas/WebauthnRpEntity"
+        user:
+          $ref: "#/components/schemas/WebauthnUserEntity"
+        challenge:
+          type: string
+        pubKeyCredParams:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/WebauthnPubKeyCredParam"
+        timeout:
+          type: integer
+          const: 60000
+        attestation:
+          type: string
+          const: none
+        authenticatorSelection:
+          $ref: "#/components/schemas/WebauthnAuthenticatorSelection"
+    WebauthnAuthenticatorAttestationResponse:
+      type: object
+      additionalProperties: true
+      description: >
+        Browser attestation response keys required by verify_and_mint_registration
+        (PHX-G240). Residual browser fields allowed.
+      required: [clientDataJSON, attestationObject]
+      properties:
+        clientDataJSON:
+          type: string
+        attestationObject:
+          type: string
+    WebauthnPublicKeyCredential:
+      type: object
+      additionalProperties: true
+      description: >
+        Credential object accepted by register/verify (PHX-G240). Live requires
+        id or rawId plus response; residual browser fields allowed.
+      properties:
+        id:
+          type: string
+        rawId:
+          type: string
+        type:
+          type: string
+        response:
+          $ref: "#/components/schemas/WebauthnAuthenticatorAttestationResponse"
+    WebauthnRegisterOptionsRequest:
+      type: object
+      additionalProperties: false
+      description: Optional user display overrides for live mint (PHX-G240).
+      properties:
+        user_name:
+          type: string
+        user_display_name:
+          type: string
+
+    WebauthnRegisterOptionsResponse:
+      type: object
+      additionalProperties: false
+      description: Challenge-bound register/options mint response (PHX-G240).
+      required:
+        - ceremony_step
+        - registration_minted
+        - attestation_crypto_verified
+        - publicKey
+      properties:
+        ceremony_step:
+          type: string
+          const: register_options
+        registration_minted:
+          type: boolean
+          const: false
+        attestation_verified:
+          type: boolean
+          const: false
+        attestation_crypto_verified:
+          type: boolean
+          const: false
+        attestation_mode:
+          type: string
+          const: challenge_bound
+        milestone:
+          type: string
+        publicKey:
+          $ref: "#/components/schemas/PublicKeyCredentialCreationOptions"
+
+    WebauthnRegisterVerifyRequest:
+      type: object
+      additionalProperties: true
+      description: >
+        Register/verify body (PHX-G240). Accepts nested credential or top-level
+        PublicKeyCredential fields; residual keys allowed for browser payloads.
+      properties:
+        credential:
+          $ref: "#/components/schemas/WebauthnPublicKeyCredential"
+        id:
+          type: string
+        rawId:
+          type: string
+        type:
+          type: string
+        response:
+          $ref: "#/components/schemas/WebauthnAuthenticatorAttestationResponse"
+
+    WebauthnRegisterVerifyResponse:
+      type: object
+      additionalProperties: false
+      description: >
+        Challenge-bound register/verify success body (PHX-G242). Live keys from
+        verify_and_mint_registration; attestation_crypto_verified remains false
+        (HARD HOLD).
+      required:
+        - ceremony_step
+        - registration_minted
+        - attestation_crypto_verified
+        - credential_id
+      properties:
+        ceremony_step:
+          type: string
+          const: register_verify
+        registration_minted:
+          type: boolean
+          const: true
+        attestation_verified:
+          type: boolean
+          const: true
+        attestation_crypto_verified:
+          type: boolean
+          const: false
+        attestation_mode:
+          type: string
+          const: challenge_bound
+        credential_id:
+          type: string
+          format: uuid
+        credential_kind:
+          type: string
+          const: webauthn
+        audit_id:
+          type: [string, "null"]
+        next_action:
+          type: string
+          const: none
+        milestone:
+          type: string
+
+    OidcProvidersPayload:
+      type: object
+      additionalProperties: false
+      required: [providers]
+      description: Named payload for OidcProvidersEnvelope.data (PHX-G234).
+      properties:
+        providers:
+          type: array
+          items:
+            $ref: "#/components/schemas/OidcLoginProviderPublicItem"
+    OidcProvidersEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/OidcProvidersPayload"
+    OidcTokenEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/OidcTokenPayload"
+    OidcTokenPayload:
+      type: object
+      additionalProperties: false
+      required: [token_type, access_token, expires_in, subject_id, tenant_id]
+      properties:
+        token_type:
+          type: string
+          const: Bearer
+        access_token:
+          type: string
+          minLength: 1
+          description: EAOS JWT (not the upstream IdP access token)
+        expires_in:
+          type: integer
+          minimum: 1
+        subject_id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: string
+          format: uuid
+        refresh_available:
+          type: boolean
+    OidcLogoutEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/OidcLogoutPayload"
+    OidcLogoutPayload:
+      type: object
+      additionalProperties: false
+      required: [revoked, jti, rp_logout]
+      properties:
+        revoked:
+          type: boolean
+        jti:
+          type: string
+          minLength: 1
+          description: Revoked EAOS JWT jti (caller session only; not a denylist dump)
+        rp_logout:
+          type: boolean
+        end_session_url:
+          type: [string, "null"]
+          format: uri
+    OidcRequiredClaimMissingDetails:
+      type: object
+      additionalProperties: false
+      description: >
+        Known details for GATEWAY_OIDC_REQUIRED_CLAIM_MISSING (live OIDC
+        required-claims assert). PHX-G210 per-code honesty.
+      required: [claims]
+      properties:
+        claims:
+          type: array
+          items:
+            type: string
+          description: Missing required id_token claim names.
+    OidcRoleRequiredDetails:
+      type: object
+      additionalProperties: false
+      description: >
+        Known details for GATEWAY_OIDC_ROLE_REQUIRED when mapped roles are
+        required but empty. PHX-G210 per-code honesty.
+      required: [role_claim, mapped_roles]
+      properties:
+        role_claim:
+          type: string
+        mapped_roles:
+          type: array
+          items:
+            type: string
+          description: Always empty for this denial code.
+    OidcAmrRequiredDetails:
+      type: object
+      additionalProperties: false
+      description: >
+        Known details for GATEWAY_OIDC_AMR_REQUIRED. When MFA enrollment URL
+        is configured, live emit also includes mfa_enrollment_url.
+        Closed residual bag PHX-G244 (live keys only).
+      required: [required_amr, present_amr]
+      properties:
+        required_amr:
+          type: array
+          items:
+            type: string
+        present_amr:
+          type: array
+          items:
+            type: string
+        mfa_enrollment_url:
+          type: string
+          format: uri
+          description: Present when EAOS_OIDC_MFA_ENROLLMENT_URL is configured.
+    OidcAcrRequiredDetails:
+      type: object
+      additionalProperties: false
+      description: >
+        Known details for GATEWAY_OIDC_ACR_REQUIRED. When MFA enrollment URL
+        is configured, live emit also includes mfa_enrollment_url.
+        Closed residual bag PHX-G244 (live keys only).
+      required: [required_acr]
+      properties:
+        required_acr:
+          type: array
+          items:
+            type: string
+        present_acr:
+          type: [string, "null"]
+        mfa_enrollment_url:
+          type: string
+          format: uri
+          description: Present when EAOS_OIDC_MFA_ENROLLMENT_URL is configured.
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          description: >
+            Optional structured denial context (G202/G204/G210/G214/G218). Known
+            per-code shapes are composed via anyOf $ref to named *Details schemas;
+            residual object keeps elevation fields[] catalog. Other codes may add keys.
+          anyOf:
+            - $ref: "#/components/schemas/OidcRequiredClaimMissingDetails"
+            - $ref: "#/components/schemas/OidcRoleRequiredDetails"
+            - $ref: "#/components/schemas/OidcAmrRequiredDetails"
+            - $ref: "#/components/schemas/OidcAcrRequiredDetails"
+            - type: object
+              additionalProperties: true
+              properties:
+                fields:
+                  type: array
+                  items:
+                    type: string
+                  description: Present for context-elevation denials (sorted field names).
+        correlation_id:
+          type: [string, "null"]
+    WebauthnVerifyDenialDetail:
+      type: object
+      additionalProperties: false
+      description: >
+        Live 400 detail from verify_and_mint_registration (PHX-G248). Challenge /
+        attestation invalid only — not packed/TPM attestation crypto.
+      required: [code, message, ceremony_step]
+      properties:
+        code:
+          type: string
+          enum:
+            - GATEWAY_WEBAUTHN_CHALLENGE_INVALID
+            - GATEWAY_WEBAUTHN_ATTESTATION_INVALID
+        message:
+          type: string
+        ceremony_step:
+          type: string
+          const: register_verify
+        correlation_id:
+          type: [string, "null"]
+    WebauthnVerifyDenialError:
+      type: object
+      additionalProperties: false
+      required: [detail]
+      properties:
+        detail:
+          $ref: "#/components/schemas/WebauthnVerifyDenialDetail"
+    WebauthnCeremonyStubDetail:
+      type: object
+      additionalProperties: false
+      required:
+        - code
+        - message
+        - ceremony_step
+        - registration_minted
+        - attestation_verified
+        - attestation_crypto_verified
+        - next_action
+        - milestone
+      properties:
+        code:
+          type: string
+          enum:
+            - GATEWAY_WEBAUTHN_REGISTRATION_DISABLED
+            - GATEWAY_WEBAUTHN_RP_CONFIG_REQUIRED
+        message:
+          type: string
+        ceremony_step:
+          type: string
+          enum: [register_options, register_verify]
+        registration_minted:
+          type: boolean
+          const: false
+        attestation_verified:
+          type: boolean
+          const: false
+        attestation_crypto_verified:
+          type: boolean
+          const: false
+        next_action:
+          type: string
+          enum: [none, configure_rp_id_and_origin]
+          description: >
+            Disabled → none; RP config missing → configure_rp_id_and_origin (G222).
+        milestone:
+          type: string
+          const: PHX-G160
+        correlation_id:
+          type: [string, "null"]
+    WebauthnCeremonyStubError:
+      type: object
+      additionalProperties: false
+      required: [detail]
+      properties:
+        detail:
+          $ref: "#/components/schemas/WebauthnCeremonyStubDetail"
+    ValidationErrorItem:
+      type: object
+      description: FastAPI/Pydantic request validation error item.
+      required: [loc, msg, type]
+      additionalProperties: true
+      properties:
+        loc:
+          type: array
+          items:
+            oneOf:
+              - type: string
+              - type: integer
+        msg:
+          type: string
+        type:
+          type: string
+    HTTPValidationError:
+      type: object
+      description: FastAPI request validation envelope (422 detail list).
+      additionalProperties: false
+      required: [detail]
+      properties:
+        detail:
+          type: array
+          items:
+            $ref: "#/components/schemas/ValidationErrorItem"
+    GatewayDetailError:
+      type: object
+      additionalProperties: false
+      required: [detail]
+      properties:
+        detail:
+          $ref: "#/components/schemas/ErrorResponse"
+  responses:
+    KernelError:
+      description: FastAPI HTTPException detail envelope (PHX-G174)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/GatewayDetailError"
+tags:
+  - name: Auth
+    description: >
+      Authentication boundary status (incl. oidc_login_product and
+      webauthn_product posture), OIDC login, session, and MFA enrollment exit

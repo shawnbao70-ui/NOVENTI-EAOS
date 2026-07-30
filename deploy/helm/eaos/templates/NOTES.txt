@@ -1,0 +1,18 @@
+NOVENTI EAOS Helm Foundation (PHX-G51 / 0.2.0)
+
+1. Replace secrets.jwtSecret and secrets.postgresPassword before production use.
+2. Build/push image from deploy/docker/Dockerfile (tag matches values.image).
+3. Install:
+   helm upgrade --install eaos deploy/helm/eaos -f my-values.yaml
+
+4. Port-forward smoke:
+   kubectl port-forward svc/{{ include "eaos.gateway.fullname" . }} 8000:{{ .Values.service.port }}
+   curl http://127.0.0.1:8000/v1/health
+
+Optional Ingress (PHX-G52): --set ingress.enabled=true (see docs/release/INGRESS.md).
+Optional HPA (PHX-G53): --set autoscaling.enabled=true (see docs/release/HPA.md).
+Optional VPA (PHX-G54): --set vpa.enabled=true (mutually exclusive with HPA; see docs/release/VPA.md).
+Optional KEDA (PHX-G58): --set keda.enabled=true (mutually exclusive with HPA/VPA; see docs/release/KEDA.md).
+Optional Mesh (PHX-G59/G71–G73): --set mesh.enabled=true; optional --set mesh.policy.enabled=true, mesh.traffic.enabled=true, mesh.authz.enabled=true (PeerAuthentication, VS+DR, AuthorizationPolicy); see docs/release/MESH.md.
+Optional Deploy Region (PHX-G76): --set region.id=ap-east-1 (label only; not multi-region SaaS); see docs/release/REGION.md.
+Payment clearing remains fail-closed. Multi-region failover / mesh control-plane install are out of scope.

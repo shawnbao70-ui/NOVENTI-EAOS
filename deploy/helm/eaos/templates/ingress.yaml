@@ -1,0 +1,53 @@
+{{- if .Values.ingress.enabled -}}
+{{- $fullName := include "eaos.gateway.fullname" . -}}
+{{- $svcPort := .Values.service.port -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "eaos.fullname" . }}
+  labels:
+    {{- include "eaos.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ingress
+  {{- $annotations := dict }}
+  {{- range $k, $v := .Values.ingress.annotations }}
+  {{- $_ := set $annotations $k $v }}
+  {{- end }}
+  {{- if .Values.ingress.certManager.enabled }}
+  {{- $_ := set $annotations "cert-manager.io/cluster-issuer" .Values.ingress.certManager.clusterIssuer }}
+  {{- end }}
+  {{- if $annotations }}
+  annotations:
+    {{- range $k, $v := $annotations }}
+    {{ $k }}: {{ $v | quote }}
+    {{- end }}
+  {{- end }}
+spec:
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className | quote }}
+  {{- end }}
+  {{- if .Values.ingress.tls }}
+  tls:
+    {{- range .Values.ingress.tls }}
+    - hosts:
+        {{- range .hosts }}
+        - {{ . | quote }}
+        {{- end }}
+      secretName: {{ .secretName | quote }}
+    {{- end }}
+  {{- end }}
+  rules:
+    {{- range .Values.ingress.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path | quote }}
+            pathType: {{ .pathType | quote }}
+            backend:
+              service:
+                name: {{ $fullName }}
+                port:
+                  number: {{ $svcPort }}
+          {{- end }}
+    {{- end }}
+{{- end }}

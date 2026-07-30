@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1"
+    />
+    <title>EAOS Extension Demo Panel</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #14231c;
+        --soft: #4a5c52;
+        --line: #d5e0d9;
+        --bg: #f3f7f4;
+        --accent: #1f6b4a;
+      }
+      body {
+        margin: 0;
+        font: 14px/1.45 "Segoe UI", system-ui, sans-serif;
+        color: var(--ink);
+        background: var(--bg);
+        padding: 0.85rem 1rem;
+      }
+      h1 {
+        margin: 0 0 0.35rem;
+        font-size: 1rem;
+        font-weight: 600;
+      }
+      p {
+        margin: 0 0 0.75rem;
+        color: var(--soft);
+      }
+      button {
+        border: 1px solid var(--line);
+        background: #fff;
+        color: var(--accent);
+        font-weight: 600;
+        padding: 0.4rem 0.7rem;
+        cursor: pointer;
+      }
+      button:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+      #status {
+        margin-top: 0.75rem;
+        white-space: pre-wrap;
+        font-family: ui-monospace, Consolas, monospace;
+        font-size: 0.8rem;
+        color: var(--soft);
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Demo Panel (first-party)</h1>
+    <p>
+      沙箱 iframe：仅通过 postMessage 请求声明动作；不直连 Gateway，不提升上下文。
+    </p>
+    <button type="button" id="btnRequestRender">Request panel.render</button>
+    <div id="status">Ready.</div>
+    <script src="./demo-panel.js"></script>
+  </body>
+</html>

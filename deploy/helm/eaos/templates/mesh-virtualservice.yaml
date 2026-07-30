@@ -1,0 +1,25 @@
+{{- if and .Values.mesh.traffic.enabled (not .Values.mesh.enabled) }}
+{{- fail "PHX-G72: mesh.traffic.enabled requires mesh.enabled=true" }}
+{{- end }}
+{{- if and .Values.mesh.enabled .Values.mesh.traffic.enabled }}
+{{- if ne .Values.mesh.traffic.vendor "istio" }}
+{{- fail "PHX-G72: mesh.traffic.vendor must be istio (Foundation)" }}
+{{- end }}
+{{- $host := .Values.mesh.traffic.host | default (include "eaos.gateway.fullname" .) }}
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: {{ include "eaos.gateway.fullname" . }}-http
+  labels:
+    {{- include "eaos.labels" . | nindent 4 }}
+    app.kubernetes.io/component: gateway
+spec:
+  hosts:
+    - {{ $host | quote }}
+  http:
+    - route:
+        - destination:
+            host: {{ $host | quote }}
+            port:
+              number: {{ .Values.service.port }}
+{{- end }}

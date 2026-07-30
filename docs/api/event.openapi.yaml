@@ -1,0 +1,872 @@
+openapi: 3.1.0
+info:
+  title: NOVENTI EAOS Event Bus API
+  version: 1.0.14
+  description: |
+    PHX-G386 adds read-only commercial event catalog projection
+    (GET /events/catalog; Terminal read projection).
+    PHX-G383 documents DLQ/replay fail-closed posture on Event status
+    (permission_gated; unauthenticated/unauthorized denied).
+    PHX-G382 deepens Event Bus status with outbox worker/lease honesty
+    (no background daemon; HTTP dispatch_due + claim lease).
+    PHX-G268 closes EventEnvelope/DeadLetterEntry outer schemas (payload remains free-form).
+    PHX-G193 adds read-only Event Bus Foundation status posture.
+    PHX-G181 documents named Event status codes (400/404/409/503).
+    PHX-P11 Event Delivery HTTP contract (outbox, dispatch, DLQ, stats).
+    PHX-G164 aligns KernelError to the Gateway `detail` envelope (semantic
+    deepen; T-0188 remainder). tenant_id, subject_id, session_id and
+    platform_scope are derived by the trusted authentication boundary and are
+    never accepted from request bodies.
+servers:
+  - url: /v1
+security:
+  - bearerAuth: []
+paths:
+  /events/status:
+    get:
+      operationId: getEventStatus
+      summary: Read-only Event Bus status with worker/lease honesty
+      tags: [Event]
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Event Bus status (PHX-G193 + PHX-G382 worker/lease honesty)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventStatusEnvelope"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /events/catalog:
+    get:
+      operationId: getEventCatalog
+      summary: Read-only commercial domain-event catalog projection
+      tags: [Event]
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Commercial event catalog (EVT-COMMERCIAL-001)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventCatalogEnvelope"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /events:
+    post:
+      operationId: publishEvent
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublishEventRequest"
+      responses:
+        "201":
+          description: Event published with in-process delivery (compatibility path)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeliveryReportResult"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid event envelope
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Event service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /events/outbox:
+    post:
+      operationId: enqueueEvent
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublishEventRequest"
+      responses:
+        "202":
+          description: Event accepted into transactional outbox
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UuidResult"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid enqueue payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Event service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /events/dispatch:
+    post:
+      operationId: dispatchDue
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DispatchDueRequest"
+      responses:
+        "200":
+          description: Outbox relay and delivery retry cycle completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DispatchReportResult"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid dispatch payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "409":
+          description: Lease or delivery conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Event service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /events/{eventId}:
+    get:
+      operationId: getEvent
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Immutable event envelope
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventEnvelope"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Event not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Event service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /events/{eventId}/replay:
+    post:
+      operationId: replayEvent
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Controlled replay report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeliveryReportResult"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "400":
+          description: Invalid replay payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Event not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Event service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /events/subscriptions:
+    post:
+      operationId: subscribe
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubscribeRequest"
+      responses:
+        "201":
+          description: Subscription registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UuidResult"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "422":
+          description: Closed-schema validation failure (extra/unknown fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+        "400":
+          description: Invalid subscription
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Event service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /events/stats:
+    get:
+      operationId: getDeliveryStats
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Delivery observability snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeliveryStatsResult"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Event service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /events/dead-letters:
+    get:
+      operationId: listDeadLetters
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Dead letter entries for the tenant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeadLetterListEnvelope"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Event service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+  /events/dead-letters/{deadLetterId}/replay:
+    post:
+      operationId: replayDeadLetter
+      parameters:
+        - name: deadLetterId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+        "401":
+          description: Tenant authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "400":
+          description: Invalid dead-letter replay
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "404":
+          description: Dead letter not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        "503":
+          description: Event service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayDetailError"
+        default:
+          $ref: "#/components/responses/KernelError"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    CorrelationId:
+      name: X-Correlation-Id
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    EventId:
+      name: eventId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    EventStatusEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/EventStatusData"
+    EventStatusData:
+      type: object
+      additionalProperties: false
+      description: >
+        PHX-G193 Event Bus status plus PHX-G382 worker/lease honesty and
+        PHX-G383 DLQ/replay fail-closed honesty. No persistent background
+        worker daemon; dispatch is on-demand via POST /events/dispatch with
+        claim-based leases. Dead-letter list/replay and event replay require
+        event_stream grants and fail closed without them.
+      required:
+        - writable
+        - supported_surfaces
+        - background_worker_daemon
+        - dispatch_trigger
+        - lease_claim_enabled
+        - default_lease_seconds
+        - dead_letter_list_access
+        - dead_letter_replay_access
+        - event_replay_access
+        - fail_closed_without_grant
+        - outbox_delivery_mode
+        - audit_read_surface
+        - commercial_emit_catalog_only
+        - replay_stats_read_only
+        - multi_region_failover
+      properties:
+        writable:
+          type: boolean
+          const: false
+        supported_surfaces:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          minItems: 1
+        background_worker_daemon:
+          type: boolean
+          const: false
+        dispatch_trigger:
+          type: string
+          const: http_post_dispatch
+        lease_claim_enabled:
+          type: boolean
+          const: true
+        default_lease_seconds:
+          type: integer
+          const: 30
+        dead_letter_list_access:
+          type: string
+          const: permission_gated
+        dead_letter_replay_access:
+          type: string
+          const: permission_gated
+        event_replay_access:
+          type: string
+          const: permission_gated
+        fail_closed_without_grant:
+          type: boolean
+          const: true
+        outbox_delivery_mode:
+          type: string
+          const: on_demand
+        audit_read_surface:
+          type: boolean
+          const: true
+        commercial_emit_catalog_only:
+          type: boolean
+          const: true
+        replay_stats_read_only:
+          type: boolean
+          const: true
+        multi_region_failover:
+          type: boolean
+          const: false
+    EventCatalogEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/EventCatalogData"
+    EventCatalogData:
+      type: object
+      additionalProperties: false
+      description: PHX-G386 read-only commercial domain-event catalog projection.
+      required: [writable, catalog_id, milestone, events]
+      properties:
+        writable:
+          type: boolean
+          const: false
+        catalog_id:
+          type: string
+          const: EVT-COMMERCIAL-001
+        milestone:
+          type: string
+          const: PHX-G386
+        events:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/CommercialEventCatalogEntry"
+    CommercialEventCatalogEntry:
+      type: object
+      additionalProperties: false
+      required: [event_name, producer, trigger]
+      properties:
+        event_name:
+          type: string
+          pattern: ^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$
+        producer:
+          type: string
+          enum: [crm.package, inventory.package]
+        trigger:
+          type: string
+          minLength: 1
+    PublishEventRequest:
+      type: object
+      required: [event_name, schema_version, producer, payload]
+      additionalProperties: false
+      properties:
+        event_name:
+          type: string
+          pattern: ^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$
+        schema_version:
+          type: string
+        producer:
+          type: string
+          minLength: 1
+        payload:
+          type: object
+          additionalProperties: true
+    SubscribeRequest:
+      type: object
+      required: [subscriber_id, event_name]
+      additionalProperties: false
+      properties:
+        subscriber_id:
+          type: string
+          minLength: 1
+        event_name:
+          type: string
+          minLength: 1
+        delivery_url:
+          type: string
+          format: uri
+          maxLength: 2048
+          description: |
+            Optional HTTPS webhook endpoint (PHX-E21). When omitted, HTTP subscribe
+            registers an in-process no-op handler (G26).
+        signing_secret:
+          type: string
+          minLength: 16
+          maxLength: 256
+          description: |
+            Optional HMAC secret (PHX-E22). Requires delivery_url. Signs POST body as
+            `{timestamp}.{json}` with header X-EAOS-Webhook-Signature: v1=<hex>.
+    DispatchDueRequest:
+      type: object
+      required: [worker_id]
+      additionalProperties: false
+      properties:
+        worker_id:
+          type: string
+          minLength: 1
+        limit:
+          type: integer
+          minimum: 1
+          default: 32
+    EventEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+        - event_id
+        - event_name
+        - schema_version
+        - correlation_id
+        - timestamp
+        - producer
+        - payload
+      properties:
+        event_id:
+          type: string
+          format: uuid
+        event_name:
+          type: string
+        schema_version:
+          type: string
+        correlation_id:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        producer:
+          type: string
+        payload:
+          type: object
+          additionalProperties: true
+    DeliveryReportPayload:
+      type: object
+      additionalProperties: false
+      required: [event_id, delivered_count, skipped_count, failed_subscribers]
+      description: Named payload for DeliveryReportResult.data (PHX-G228).
+      properties:
+        event_id:
+          type: string
+          format: uuid
+        delivered_count:
+          type: integer
+        skipped_count:
+          type: integer
+        failed_subscribers:
+          type: array
+          items:
+            type: string
+    DeliveryReportResult:
+      type: object
+      additionalProperties: false
+      required: [ok, data]
+      properties:
+        ok:
+          type: boolean
+          const: true
+        data:
+          $ref: "#/components/schemas/DeliveryReportPayload"
+        audit_id:
+          type: string
+          format: uuid
+    DispatchReportPayload:
+      type: object
+      additionalProperties: false
+      required:
+        - outbox_dispatched
+        - outbox_failed
+        - deliveries_retried
+        - deliveries_dead_lettered
+      description: Named payload for DispatchReportResult.data (PHX-G228).
+      properties:
+        outbox_dispatched:
+          type: integer
+        outbox_failed:
+          type: integer
+        deliveries_retried:
+          type: integer
+        deliveries_dead_lettered:
+          type: integer
+    DispatchReportResult:
+      type: object
+      additionalProperties: false
+      required: [ok, data]
+      properties:
+        ok:
+          type: boolean
+          const: true
+        data:
+          $ref: "#/components/schemas/DispatchReportPayload"
+        audit_id:
+          type: string
+          format: uuid
+    DeliveryStatsPayload:
+      type: object
+      additionalProperties: false
+      required:
+        - pending_outbox
+        - leased_outbox
+        - failed_deliveries
+        - dead_letter_depth
+      description: Named payload for DeliveryStatsResult.data (PHX-G228).
+      properties:
+        pending_outbox:
+          type: integer
+        leased_outbox:
+          type: integer
+        failed_deliveries:
+          type: integer
+        dead_letter_depth:
+          type: integer
+    DeliveryStatsResult:
+      type: object
+      additionalProperties: false
+      required: [ok, data]
+      properties:
+        ok:
+          type: boolean
+          const: true
+        data:
+          $ref: "#/components/schemas/DeliveryStatsPayload"
+    DeadLetterListEnvelope:
+      type: object
+      additionalProperties: false
+      required: [ok, data]
+      description: >
+        Named list envelope for GET /events/dead-letters (PHX-G224).
+      properties:
+        ok:
+          type: boolean
+          const: true
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeadLetterEntry"
+    DeadLetterEntry:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - event_id
+        - subscriber_id
+        - reason
+        - attempt_count
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        event_id:
+          type: string
+          format: uuid
+        subscriber_id:
+          type: string
+        reason:
+          type: string
+        attempt_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        replayed_at:
+          type: [string, "null"]
+          format: date-time
+    UuidResult:
+      type: object
+      additionalProperties: false
+      required: [ok, id, data]
+      description: >
+        Unified UuidResult dialect (PHX-G170) with ok envelope for AI/Event.
+        `id` and `data` carry the same UUID.
+      properties:
+        ok:
+          type: boolean
+          const: true
+        id:
+          type: string
+          format: uuid
+        data:
+          type: string
+          format: uuid
+        audit_id:
+          type: string
+          format: uuid
+    OkResponse:
+      type: object
+      additionalProperties: false
+      required: [ok]
+      properties:
+        ok:
+          type: boolean
+          const: true
+        data:
+          type: boolean
+          const: true
+        audit_id:
+          type: string
+          format: uuid
+    ContextElevationDenialDetails:
+      type: object
+      additionalProperties: false
+      description: >
+        Known details shape for code TERMINAL_CONTEXT_ELEVATION_DENIED
+        (live /context/echo elevation deny). PHX-G208/G220 per-code honesty;
+        other error codes may use different details keys.
+      required: [fields]
+      properties:
+        fields:
+          type: array
+          items:
+            type: string
+          description: Sorted denied elevation field names.
+    ErrorBody:
+      type: object
+      additionalProperties: false
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          description: >
+            Optional structured denial context (G202/G204/G216/G220). Known
+            elevation shape is composed via anyOf $ref to
+            ContextElevationDenialDetails; residual object allows other keys.
+          anyOf:
+            - $ref: "#/components/schemas/ContextElevationDenialDetails"
+            - type: object
+              additionalProperties: true
+    ValidationErrorItem:
+      type: object
+      description: FastAPI/Pydantic request validation error item.
+      required: [loc, msg, type]
+      additionalProperties: true
+      properties:
+        loc:
+          type: array
+          items:
+            oneOf:
+              - type: string
+              - type: integer
+        msg:
+          type: string
+        type:
+          type: string
+    HTTPValidationError:
+      type: object
+      description: FastAPI request validation envelope (422 detail list).
+      additionalProperties: false
+      required: [detail]
+      properties:
+        detail:
+          type: array
+          items:
+            $ref: "#/components/schemas/ValidationErrorItem"
+    GatewayDetailError:
+      type: object
+      additionalProperties: false
+      required: [detail]
+      properties:
+        detail:
+          $ref: "#/components/schemas/ErrorBody"
+  responses:
+    Ok:
+      description: Operation succeeded
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/OkResponse"
+    KernelError:
+      description: FastAPI HTTPException detail envelope (PHX-G164)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/GatewayDetailError"

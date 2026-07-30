@@ -1,0 +1,60 @@
+# PHX-G154 WebAuthn Ceremony Stub Observability Acceptance
+
+**日期：** 2026-07-21  
+**状态：** Fully Accepted（Foundation）  
+**归属：** API Gateway / Auth / Smart Terminal  
+**退出门禁：** 503 detail 含 ceremony_step；仍不 mint；包 `0.2.1`；Alembic `0029`  
+**授权：** DAL-G003 + DAL-G004 Eng `2` deepen；Usage **DAL-U026**
+
+## 1. 交付范围
+
+| 切片 | 交付 |
+|------|------|
+| A | ADR-0173 + Architecture Gate |
+| B | `webauthn_ceremony.py` step detail；`routers/webauthn.py` |
+| C | `webauthn_product.py` G154；inventory fence；auth OpenAPI **1.3.4**；Terminal thin |
+| D | PROJECT_STATUS / CHANGELOG / TASKS / ENG tip / Manifest G154 / DAL-U026 |
+| E | `test_api_gateway_g154_webauthn_ceremony_observability.py` + soften G151/auth |
+
+## 2. 核心不变量
+
+- Stub routes only：`POST …/register/options|verify` → 503 `GATEWAY_WEBAUTHN_REGISTRATION_DISABLED`  
+- Detail 含 `ceremony_step` + `registration_minted=false` + `attestation_verified=false` + `next_action=none`  
+- **不** mint PublicKeyCredential options / attestation；即使 env=true  
+- `/auth/webauthn/register` 仍 ABSENT  
+- 不打开 Role→grant mint / 支付清算 / Brain execute / Twin authorize  
+- 无新 Alembic；包仍 `0.2.1`；head 仍 `0029_eaos_declared_roles_g90`
+
+## 3. 自动化证据
+
+- 契约：`tests/contracts/test_api_gateway_g154_webauthn_ceremony_observability.py`  
+- 回归：`test_api_gateway_g151_*` · `test_auth_openapi.py` · `test_api_gateway_g148_*` · `test_delegated_authority_ledger.py`  
+- Alembic head：`0029_eaos_declared_roles_g90`
+
+## 4. 七步自审
+
+| 审查 | 结论 |
+|------|------|
+| Architecture Review | 通过；ADR-0173 |
+| Constitution Review | 通过；fail-closed 持有；无 BOOK 编辑 |
+| Cross-reference Review | 通过；G151 软化；auth 1.3.4；DAL-U026 |
+| Documentation Review | 通过；OpenAPI + tip fences 同步 |
+| Consistency Review | 通过；包 `0.2.1`；head `0029` |
+| Gap Analysis | Live create/get mint 另批；Role→grant mint 需 explicit PO；支付清算（`4`）暂缓 |
+| Second-pass Review | Fully Accepted（Foundation） |
+
+## 5. Explicit Defer
+
+- Live WebAuthn credential create/get / attestation mint  
+- Honoring `EAOS_WEBAUTHN_REGISTRATION_ENABLED` as a mint switch  
+- Role→grant auto-write / mint from role（explicit PO）  
+- Marketplace 支付清算 / 外部仲裁（Eng `4` 暂缓）  
+- Brain execute / Twin authorize  
+- 新 Alembic（除非后续编号切片）  
+
+## 6. 证据索引
+
+- [PHX-G154 Architecture Gate](PHX-G154_ARCHITECTURE_GATE.md)  
+- [ADR-0173](../decisions/ADR-0173-webauthn-ceremony-stub-observability.md)  
+- [auth.openapi.yaml](../api/auth.openapi.yaml)  
+- [test_api_gateway_g154_webauthn_ceremony_observability.py](../../tests/contracts/test_api_gateway_g154_webauthn_ceremony_observability.py)  

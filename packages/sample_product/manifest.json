@@ -1,0 +1,74 @@
+{
+  "package_key": "noventi.sample.product",
+  "version": "1.1.0",
+  "package_type": "business",
+  "surfaces": [
+    {
+      "surface_key": "product.catalog",
+      "title": "Product Catalog",
+      "description": "Sample product catalog surface for declared Package Surface projection (PHX-G165)"
+    },
+    {
+      "surface_key": "product.sample",
+      "title": "样品流程（演示）",
+      "description": "Knowledge-aligned sample intake → analysis → stock → quote handoff (Terminal demo only; not Legacy CRUD)"
+    }
+  ],
+  "actions": [
+    {
+      "action_key": "product.offer.review",
+      "resource_type": "pkg.product.offer",
+      "permission_action": "review",
+      "high_impact": false,
+      "surface_key": "product.catalog",
+      "description": "Review a product offer via governed Operator handoff"
+    },
+    {
+      "action_key": "sample.intake.compose",
+      "resource_type": "pkg.sample.flow",
+      "permission_action": "compose",
+      "high_impact": false,
+      "surface_key": "product.sample",
+      "description": "Demo: compose sample intake intent (customer + SP number + New)"
+    },
+    {
+      "action_key": "sample.analysis.compose",
+      "resource_type": "pkg.sample.flow",
+      "permission_action": "compose",
+      "high_impact": false,
+      "surface_key": "product.sample",
+      "description": "Demo: compose sample analysis / Sample360 intent"
+    },
+    {
+      "action_key": "sample.stock.compose",
+      "resource_type": "pkg.sample.flow",
+      "permission_action": "compose",
+      "high_impact": false,
+      "surface_key": "product.sample",
+      "description": "Demo: compose sample stocking (Sample Receipt) intent"
+    },
+    {
+      "action_key": "sample.quote.handoff",
+      "resource_type": "pkg.sample.flow",
+      "permission_action": "handoff",
+      "high_impact": false,
+      "surface_key": "product.sample",
+      "description": "Demo: handoff sample → quotation convert intent"
+    }
+  ],
+  "required_permissions": [
+    {
+      "resource_type": "pkg.product.offer",
+      "actions": ["review"]
+    },
+    {
+      "resource_type": "pkg.sample.flow",
+      "actions": ["compose", "handoff"]
+    }
+  ],
+  "declared_events": [
+    "pkg.product.offer.reviewed",
+    "pkg.sample.flow.composed",
+    "pkg.sample.flow.handed_off"
+  ]
+}

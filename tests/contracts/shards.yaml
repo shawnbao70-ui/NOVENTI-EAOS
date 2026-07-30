@@ -1,0 +1,141 @@
+# PHX-G408 — contract suite shards
+# Authority: docs/release/CONTRACT_SHARDS.md
+# Required PR set wall-clock budget: ≤ 600 seconds on a single reference engineer workstation.
+
+version: 1
+milestone: PHX-G408
+budget_seconds_pr_required: 600
+
+shards:
+  pr_required:
+    ownership: Platform + Test
+    purpose: Fast actionable feedback for every remediation/feature PR
+    schedule: every_pr
+    budget_seconds: 600
+    # Paths relative to repository root. Keep lean — full suite is nightly.
+    paths:
+      - tests/contracts/test_roadmap_tip_matches_alembic_head.py
+      - tests/contracts/test_api_gateway_g406_remediation_tip_helper.py
+      - tests/contracts/test_baseline_hygiene_g405.py
+      - tests/contracts/test_baseline_hygiene_g406.py
+      - tests/contracts/test_baseline_hygiene_g407.py
+      - tests/contracts/test_ops_g407_docker_noventi_packaging.py
+      - tests/contracts/test_ops_g50.py
+      - tests/contracts/test_release_g144.py
+      - tests/contracts/test_release_r17.py
+      - tests/contracts/test_api_gateway_g400_marketplace_metering_entitlement.py
+      - tests/contracts/test_api_gateway_g401_marketplace_billing_record_shell.py
+      - tests/contracts/test_api_gateway_g402_marketplace_dispute_arbitration.py
+      - tests/contracts/test_api_gateway_g403_workflow_multi_step_executable.py
+      - tests/contracts/test_api_gateway_g193_openapi_package_terminal_event_status_mount.py
+      - tests/contracts/test_ops_g408_contract_shards.py
+      - tests/contracts/test_baseline_hygiene_g408.py
+      - tests/contracts/test_ops_g409_version_parity.py
+      - tests/contracts/test_ops_g410_ci_and_lock.py
+      - tests/contracts/test_docs_g411_governance_truth.py
+      - tests/contracts/test_api_gateway_g412_production_auth.py
+      - tests/contracts/test_ops_g412_security_truth.py
+      - tests/contracts/test_ops_g413_k8s_harden.py
+      - tests/contracts/test_ops_g414_pg_integration_subset.py
+      - tests/contracts/test_ops_g415_rc_evidence.py
+      - tests/contracts/test_ops_g416_g421_batch_e_closeout.py
+      - tests/contracts/test_ops_g422_g427_batch_f_integration_truth.py
+      - tests/contracts/test_api_gateway_g428_g433_batch_g_finance_deepen.py
+      - tests/contracts/test_api_gateway_g434_g439_batch_h_workflow_deepen.py
+      - tests/contracts/test_api_gateway_g440_g445_batch_i_openapi_semantic.py
+      - tests/contracts/test_api_gateway_g446_g451_batch_j_knowledge_twin_brain.py
+      - tests/contracts/test_ops_g452_g457_batch_k_ops_tenant.py
+      - tests/contracts/test_ops_g458_g463_batch_l_foundation_024.py
+      - tests/contracts/test_ops_g464_g469_batch_m_production_go.py
+      - tests/contracts/test_api_gateway_g470_g475_batch_n_auth_residual.py
+      - tests/contracts/test_api_gateway_g476_g481_batch_o_commercial_residual.py
+      - tests/contracts/test_api_gateway_g482_g487_batch_p_supply_deepen.py
+      - tests/contracts/test_api_gateway_g488_g493_batch_q_marketplace_residual.py
+      - tests/contracts/test_api_gateway_g494_g499_batch_r_event_audit.py
+      - tests/contracts/test_api_gateway_g500_g505_batch_s_terminal_plugin.py
+      - tests/contracts/test_ops_g506_g511_batch_t_foundation_025.py
+
+  baseline:
+    ownership: Release
+    purpose: Tip / package / roadmap hygiene
+    schedule: nightly_or_parallel
+    paths:
+      - tests/contracts/test_baseline_hygiene_g387.py
+      - tests/contracts/test_baseline_hygiene_g393.py
+      - tests/contracts/test_baseline_hygiene_g399.py
+      - tests/contracts/test_baseline_hygiene_g405.py
+      - tests/contracts/test_baseline_hygiene_g406.py
+      - tests/contracts/test_baseline_hygiene_g407.py
+      - tests/contracts/test_roadmap_tip_matches_alembic_head.py
+      - tests/contracts/test_api_gateway_g406_remediation_tip_helper.py
+
+  ops_release:
+    ownership: Platform
+    purpose: Docker / compose / release train surfaces
+    schedule: nightly_or_parallel
+    collect: tests/contracts/test_ops_*.py tests/contracts/test_release_*.py
+
+  docs:
+    ownership: Architecture + Release
+    purpose: Docs / knowledge pack contracts
+    schedule: nightly_or_parallel
+    collect: tests/contracts/test_docs_*.py
+
+  openapi_auth:
+    ownership: Identity / Auth
+    purpose: Auth / OIDC / WebAuthn / permission OpenAPI honesty
+    schedule: nightly_or_parallel
+    # Explicit glob — run via pytest path patterns in runner
+    collect: >-
+      tests/contracts/test_api_gateway_g14*.py
+      tests/contracts/test_api_gateway_g15*.py
+      tests/contracts/test_api_gateway_g16*.py
+      tests/contracts/test_api_gateway_g17[0-9]_*.py
+      tests/contracts/test_api_gateway_g18[0-9]_*.py
+      tests/contracts/test_api_gateway_g19[0-5]_*.py
+      tests/contracts/test_api_gateway_g21[0-5]_*.py
+      tests/contracts/test_api_gateway_g24*.py
+
+  openapi_terminal:
+    ownership: Terminal
+    purpose: Terminal OpenAPI inventory / status deepen
+    schedule: nightly_or_parallel
+    collect: tests/contracts/test_api_gateway_g*terminal*.py
+
+  openapi_remainder:
+    ownership: Platform
+    purpose: Remaining OpenAPI softener / closure contracts
+    schedule: nightly_or_parallel
+    collect: tests/contracts/test_api_gateway_g*.py
+
+  domain_runtime:
+    ownership: Domain
+    purpose: CRM / Finance / Purchase / Inventory / Workflow runtime contracts
+    schedule: nightly_or_parallel
+    collect: >-
+      tests/contracts/test_api_gateway_g3*.py
+      tests/contracts/test_api_gateway_g4*.py
+      tests/contracts/test_crm_*.py
+      tests/contracts/test_finance_*.py
+      tests/contracts/test_inventory_*.py
+      tests/contracts/test_purchase_*.py
+      tests/contracts/test_*_g3*.py
+      tests/contracts/test_*_g4*.py
+
+  integration_critical:
+    ownership: Domain
+    purpose: Dedicated eaos_test PostgreSQL critical subset (PHX-G414)
+    schedule: nightly_or_parallel
+    paths:
+      - tests/integration/test_postgresql_persistence.py
+      - tests/integration/test_crm_c1_postgresql.py
+      - tests/integration/test_crm_z1_postgresql.py
+      - tests/integration/test_finance_f1_postgresql.py
+      - tests/integration/test_finance_n1_postgresql.py
+      - tests/integration/test_inventory_i1_postgresql.py
+
+  full_contracts:
+    ownership: Platform + Test
+    purpose: Complete contracts tree (publish duration; do not hide latency)
+    schedule: nightly
+    collect: tests/contracts

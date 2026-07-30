@@ -1,0 +1,23 @@
+{{- if and .Values.mesh.policy.enabled (not .Values.mesh.enabled) }}
+{{- fail "PHX-G71: mesh.policy.enabled requires mesh.enabled=true" }}
+{{- end }}
+{{- if and .Values.mesh.enabled .Values.mesh.policy.enabled }}
+{{- if ne .Values.mesh.policy.vendor "istio" }}
+{{- fail "PHX-G71: mesh.policy.vendor must be istio (Foundation)" }}
+{{- end }}
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: {{ include "eaos.gateway.fullname" . }}-mtls
+  labels:
+    {{- include "eaos.labels" . | nindent 4 }}
+    app.kubernetes.io/component: gateway
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "eaos.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: gateway
+  mtls:
+    mode: {{ .Values.mesh.policy.mtlsMode | default "STRICT" | quote }}
+{{- end }}
