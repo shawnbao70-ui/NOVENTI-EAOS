@@ -34,7 +34,7 @@ documentation-only evidence; that record does not supersede PROD1 verification.
 | Repository-admin identity | `shawnbao70-ui`（via `gh` API） |
 | Timestamp (UTC) | 2026-07-30 |
 | Settings API | `GET /repos/shawnbao70-ui/NOVENTI-EAOS/branches/main/protection` |
-| Candidate SHA（docker-smoke green） | `6b6457daad79e63e072e9ea426307b139b74fad8` |
+| Candidate SHA（full eaos-ci green） | `e90dab673e3fdf48f1d25c7a89ab862948be1b0f` |
 
 Payload retained: `docs/release/_PROD1_branch_protection_payload.json`.
 
