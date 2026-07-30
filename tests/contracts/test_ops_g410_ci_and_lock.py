@@ -32,7 +32,8 @@ def test_g410_constraints_pin_direct_deps() -> None:
         "uvicorn==",
         "alembic==",
         "SQLAlchemy==",
-        "psycopg[binary]==",
+        # pip>=26 forbids extras in constraint files; pin base package only.
+        "psycopg==",
         "cryptography==",
         "PyYAML==",
         "pytest==",
