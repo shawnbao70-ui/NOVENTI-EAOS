@@ -10,7 +10,7 @@
 | Gate | Evidence | Result |
 |---|---|---|
 | G464 branch protection | https://github.com/shawnbao70-ui/NOVENTI-EAOS · `main` protected；see `BRANCH_PROTECTION.md` Evidence record | **VERIFIED** |
-| G465 Docker image smoke | https://github.com/shawnbao70-ui/NOVENTI-EAOS/actions/runs/30513194462/job/90777413453 · SHA `6b6457daad79e63e072e9ea426307b139b74fad8` · job `docker import smoke (optional host)` | **GREEN** |
+| G465 Docker image smoke | https://github.com/shawnbao70-ui/NOVENTI-EAOS/actions/runs/30514688293 · SHA `e90dab673e3fdf48f1d25c7a89ab862948be1b0f` · job `docker import smoke (optional host)` | **GREEN**（full `eaos-ci` success） |
 | G466 PostgreSQL critical | Dedicated `eaos_test` on `127.0.0.1:5432` · `_PROD1_integration_critical.txt` | **GREEN** — **43 passed / 1 skipped** |
 | G467 decision | All three production evidence gates satisfied | **GO** |
 | G468 operator pointers | `OPERATIONS_RUNBOOK.md`, `RELEASE_CHECKLIST.md`, `BRANCH_PROTECTION.md` | **READY** |
@@ -22,8 +22,8 @@
 |-------|-------|
 | Repository | https://github.com/shawnbao70-ui/NOVENTI-EAOS |
 | Visibility | public（required for Free-plan classic branch protection） |
-| Candidate SHA | `6b6457daad79e63e072e9ea426307b139b74fad8`（constraints fix; docker-smoke green） |
-| CI run | https://github.com/shawnbao70-ui/NOVENTI-EAOS/actions/runs/30513194462 |
+| Candidate SHA | `e90dab673e3fdf48f1d25c7a89ab862948be1b0f`（pr_required + docker-smoke + helm green） |
+| CI run | https://github.com/shawnbao70-ui/NOVENTI-EAOS/actions/runs/30514688293 |
 | Admin / recorder | `shawnbao70-ui` via `gh` · 2026-07-30 |
 
 ## PROD1 closeout notes
