@@ -41,5 +41,7 @@ def test_g510_g511_final_stop_and_no_go_honesty() -> None:
     assert "await PO G512+" in roadmap
     closeout = CLOSEOUT.read_text(encoding="utf-8")
     assert "0.2.5" in closeout and "0092" in closeout
+    # Batch T closeout remains historically NO-GO; PROD1 may later record GO.
     assert "NO-GO" in closeout
-    assert "NO-GO" in DECISION.read_text(encoding="utf-8")
+    decision = DECISION.read_text(encoding="utf-8")
+    assert "NO-GO" in decision or "**GO**" in decision or "Decision:** **GO" in decision
