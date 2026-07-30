@@ -10,6 +10,8 @@ uvicorn==0.48.0
 PyYAML==6.0.3
 alembic==1.18.5
 SQLAlchemy==2.0.51
-psycopg[binary]==3.3.4
+# Pin base package only — extras are illegal in constraint files under pip>=26.
+# Binary wheels still come from pyproject `psycopg[binary]` requirement.
+psycopg==3.3.4
 cryptography==46.0.7
 pytest==9.1.1
