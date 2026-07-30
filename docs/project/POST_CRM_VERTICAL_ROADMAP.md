@@ -5,10 +5,13 @@
 **状态：** tip `0092`；package `0.2.5`；Batches M→T COMPLETE（G464–G511）· CRM UI COMPLETE（G512–G525，through Return Authorization）· production **GO**（PROD1 / G469 evidence 2026-07-30）· **FINAL STOP TRACK-G525** · Serial **AK→AR**（G526–G527 remain closed）· Standing Coding Auth **Approved** 2026-07-29（Gate-Accepted packages；见 `PHOENIX_GATE_STANDING_CODING_AUTHORIZATION.md`）— 下一 slice 仍须 PO 点名 / 排队声明
 
 Historical retained stops: **FINAL STOP TRACK-G405** ·
-**FINAL STOP TRACK-G463** · **FINAL STOP TRACK-G512** ·
-**FINAL STOP TRACK-G513** · **FINAL STOP TRACK-G514**.
+**FINAL STOP TRACK-G463** · **FINAL STOP TRACK-G511** ·
+**FINAL STOP TRACK-G512** · **FINAL STOP TRACK-G513** ·
+**FINAL STOP TRACK-G514**.
 At historical G405 stop: **G400–G405 COMPLETE**; queue empty await PO for G406+.
 At historical G463 stop: Batches E→L closed at **FINAL STOP TRACK-G463**.
+At historical G511 stop: **TRACK-G511 COMPLETE** / **FINAL STOP TRACK-G511**;
+`await PO G512+`（superseded by later CRM UI serial）.
 Historical G514 successor boundary: **G515–G521 closed at that stop**; G515 was
 opened later through its independent Product Gate and Coding Authorization.
 Historical G515 stop: **FINAL STOP TRACK-G515**.
