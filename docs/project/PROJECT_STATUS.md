@@ -9,7 +9,7 @@
 
 ## 当前状态
 
-**Eng tip（authoritative）：** Foundation package **`0.2.5`** · Alembic **`0092_finance_realized_fx_gl_bridge_g372`** · Batches M→T COMPLETE · CRM UI **G512–G525 COMPLETE**（through Return Authorization）· **FINAL STOP TRACK-G525**. Production remains **NO-GO** pending G469 evidence.
+**Eng tip（authoritative）：** Foundation package **`0.2.5`** · Alembic **`0092_finance_realized_fx_gl_bridge_g372`** · Batches M→T COMPLETE · CRM UI **G512–G525 COMPLETE**（through Return Authorization）· **FINAL STOP TRACK-G525**. Production **GO**（PROD1 / G469 evidence 2026-07-30；repo `shawnbao70-ui/NOVENTI-EAOS`）。
 
 **Gate governance：** [ADR-0321](../decisions/ADR-0321-phoenix-gate-framework.md) / [Phoenix Gate Framework](PHOENIX_GATE_FRAMEWORK.md) is the sole formal Gate standard. Framework Redesign **Approve** 2026-07-29 (process only). **Standing Coding Authorization Approved** 2026-07-29 for Gate-Accepted Business Packages — see [PHOENIX_GATE_STANDING_CODING_AUTHORIZATION.md](PHOENIX_GATE_STANDING_CODING_AUTHORIZATION.md). Architecture changes still require Decision Summary → Approve/Amend/Reject. Sequencing: next free contiguous PHX-G; queue empty until PO names next slice after G518.
 
